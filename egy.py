@@ -9,6 +9,12 @@ from ratelimit import limits, sleep_and_retry
 import time
 import logging
 import tqdm
+#----------------------------------------------------------
+# Project: Egyscan 
+# Copyright (c) 2023 dragonked2
+# This code is protected by copyright law. Unauthorized
+# use or distribution is strictly prohibited.
+#----------------------------------------------------------
 
 ALLOWED_HOSTS = ["www.google.com"]
 
