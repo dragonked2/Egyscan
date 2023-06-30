@@ -156,6 +156,11 @@ def collect_urls(target_url):
     with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         while urls:
             current_url = urls.pop()
+
+            # Skip already processed URLs
+            if current_url in processed_urls:
+                continue
+
             processed_urls.add(current_url)
 
             try:
@@ -192,11 +197,19 @@ def inject_payloads(url):
     params = parse_qs(parsed_url.query)
 
     # Inject payloads into parameters
+    processed_parameters = set()
     for param in params:
+        if param in processed_parameters:
+            continue
+
+        processed_parameters.add(param)
+
         for payload in payloads:
             injected_params = params.copy()
             injected_params[param] = [param_value + payload for param_value in injected_params[param]]
-            injected_url = url.split("?")[0] + "?" + "&".join(f"{key}={value}" for key, value in injected_params.items())
+            injected_url = url.split("?")[0] + "?" + "&".join(
+                f"{key}={value}" for key, value in injected_params.items()
+            )
             scan_url(injected_url)
 
     # Inject payloads into form inputs
@@ -204,22 +217,29 @@ def inject_payloads(url):
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
     for form in forms:
-        action = form.get("action")
-        if action:
-            if not action.startswith("http"):
-                action = urljoin(base_url, action)
-            form_inputs = form.find_all("input")
-            for input_tag in form_inputs:
-                name = input_tag.get("name")
-                if name:
-                    for payload in payloads:
-                        injected_data = {name: str(input_tag.get("value", "")) + payload}
+        form_action = form.get("action")
+        if form_action:
+            if not form_action.startswith("http"):
+                form_action = urljoin(base_url, form_action)
 
-                        response = requests.post(action, data=injected_data)
-                        scan_url(response.url)
+            form_inputs = form.find_all(["input", "textarea"])
+            form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
+
+            processed_fields = set()
+            for field in form_data:
+                if field in processed_fields:
+                    continue
+
+                processed_fields.add(field)
+
+                for payload in payloads:
+                    injected_fields = form_data.copy()
+                    injected_fields[field] = injected_fields.get(field, "") + payload
+                    response = requests.post(form_action, data=injected_fields)
+                    scan_response(response)
 
 
-# Scan a single URL for vulnerabilities
+# Scan a URL for vulnerabilities
 def scan_url(url):
     if check_sqli(url):
         logging.warning(f"SQL Injection vulnerability found: {url}")
@@ -232,32 +252,58 @@ def scan_url(url):
     if check_open_redirect(url):
         logging.warning(f"Open Redirect vulnerability found: {url}")
     if check_backup_files(url):
-        logging.warning(f"Backup File vulnerability found: {url}")
+        logging.warning(f"Backup Files vulnerability found: {url}")
     if check_database_exposure(url):
         logging.warning(f"Database Exposure vulnerability found: {url}")
     if check_directory_listings(url):
-        logging.warning(f"Directory Listing vulnerability found: {url}")
+        logging.warning(f"Directory Listings vulnerability found: {url}")
     if check_sensitive_information(url):
-        logging.warning(f"Sensitive Information Exposure vulnerability found: {url}")
+        logging.warning(f"Sensitive Information exposure vulnerability found: {url}")
+
+
+# Scan a response for vulnerabilities
+def scan_response(response):
+    if check_sqli(response.url):
+        logging.warning(f"SQL Injection vulnerability found: {response.url}")
+    if check_rce(response.url):
+        logging.warning(f"Remote Code Execution vulnerability found: {response.url}")
+    if check_xss(response.url):
+        logging.warning(f"Cross-Site Scripting vulnerability found: {response.url}")
+    if check_lfi(response.url):
+        logging.warning(f"Local File Inclusion vulnerability found: {response.url}")
+    if check_open_redirect(response.url):
+        logging.warning(f"Open Redirect vulnerability found: {response.url}")
+    if check_backup_files(response.url):
+        logging.warning(f"Backup Files vulnerability found: {response.url}")
+    if check_database_exposure(response.url):
+        logging.warning(f"Database Exposure vulnerability found: {response.url}")
+    if check_directory_listings(response.url):
+        logging.warning(f"Directory Listings vulnerability found: {response.url}")
+    if check_sensitive_information(response.url):
+        logging.warning(f"Sensitive Information exposure vulnerability found: {response.url}")
 
 
 def main():
+    print("EgyScan V1.0")
+    # Get the target URL from the user
+    target_url = input("Enter the target URL to scan for vulnerabilities: ")
+
     print_logo()
-    ("EgyScan V1.0")
-    target_url = input("Enter the target URL: ")
-    print(f"\nScanning: {target_url}\n")
-
-    # Collect URLs
-    logging.info("Collecting URLs...")
+    print("EgyScan V1.0")
+    # Collect URLs from the target website
+    logging.info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
-    logging.info(f"{len(urls)} URLs collected.")
 
-    # Inject payloads and scan URLs
-    logging.info("Scanning URLs...")
-    for url in urls:
-        inject_payloads(url)
+    # Scan the collected URLs for vulnerabilities
+    logging.info("Scanning collected URLs for vulnerabilities...")
+    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+        futures = [executor.submit(scan_url, url) for url in islice(urls, MAX_WORKERS)]
 
-    logging.info("Scanning complete.")
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                logging.error(f"An error occurred while scanning a URL: {e}")
 
 
 if __name__ == "__main__":
