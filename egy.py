@@ -243,7 +243,7 @@ def scan_url(url):
 
 def main():
     print_logo()
-    input("EgyScan V1.0")
+    ("EgyScan V1.0")
     target_url = input("Enter the target URL: ")
     print(f"\nScanning: {target_url}\n")
 
