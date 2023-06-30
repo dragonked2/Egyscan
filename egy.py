@@ -10,6 +10,8 @@ import time
 import logging
 import tqdm
 
+ALLOWED_HOSTS = ["www.google.com"]
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
@@ -74,9 +76,9 @@ def check_open_redirect(url):
     sanitized_url = urljoin(url, payload)
     parsed_url = urlparse(sanitized_url)
     
-    if parsed_url.netloc == "www.google.com":
+    if parsed_url.netloc in ALLOWED_HOSTS:
         response = requests.get(sanitized_url)
-        if response.status_code == 200 and "google.com" in response.url:
+        if response.status_code == 200 and urlparse(response.url).netloc == "www.google.com":
             return True
     
     return False
