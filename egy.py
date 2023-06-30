@@ -298,12 +298,12 @@ def scan_response(response):
 
 
 def main():
-    print("EgyScan V1.1")
+    print("EgyScan V1.0")
     # Get the target URL from the user
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
 
     print_logo()
-    print("EgyScan V1.1")
+    print("EgyScan V1.0")
     # Collect URLs from the target website
     logging.info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
@@ -311,18 +311,12 @@ def main():
     # Scan the collected URLs for vulnerabilities
     logging.info("Scanning collected URLs for vulnerabilities...")
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(scan_url, url) for url in urls]
+        futures = [executor.submit(scan_url, url) for url in islice(urls, MAX_WORKERS)]
         for future in as_completed(futures):
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"Error occurred while scanning URL: {e}")
-
-    # Inject payloads into parameters, query, and form inputs
-    logging.info("Injecting payloads into parameters, query, and form inputs...")
-    inject_payloads(target_url)
-
-    logging.info("Scanning completed!")
+                logging.error(f"An error occurred: {str(e)}")
 
 
 if __name__ == "__main__":
