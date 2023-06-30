@@ -1,5 +1,5 @@
 # Web Vulnerability Scanner
-
+# EgyScan V1.0
 This is a simple web vulnerability scanner script that scans a target website for common vulnerabilities. It checks for SQL injection, remote code execution, cross-site scripting (XSS), local file inclusion (LFI), open redirect, backup files, database exposure, directory listings, and sensitive information exposure vulnerabilities.
 
 ## Prerequisites
