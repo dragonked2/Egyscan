@@ -68,11 +68,17 @@ def check_lfi(url):
     return False
 
 
+
 def check_open_redirect(url):
     payload = "http://www.google.com"
-    response = requests.get(url + payload)
-    if response.status_code == 200 and "google.com" in response.url:
-        return True
+    sanitized_url = urljoin(url, payload)
+    parsed_url = urlparse(sanitized_url)
+    
+    if parsed_url.netloc == "www.google.com":
+        response = requests.get(sanitized_url)
+        if response.status_code == 200 and "google.com" in response.url:
+            return True
+    
     return False
 
 
