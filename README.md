@@ -1,6 +1,7 @@
 # Web Vulnerability Scanner
 # EgyScan V1.0
 This is a simple web vulnerability scanner script that scans a target website for common vulnerabilities. It checks for SQL injection, remote code execution, cross-site scripting (XSS), local file inclusion (LFI), open redirect, backup files, database exposure, directory listings, and sensitive information exposure vulnerabilities.
+![image](https://github.com/dragonked2/Egyscan/assets/66541902/aa9a376f-715a-4722-b819-ecf8005d9b32)
 
 ## Prerequisites
 
@@ -14,13 +15,11 @@ This is a simple web vulnerability scanner script that scans a target website fo
    ```bash
    git clone https://github.com/dragonked2/Egyscan.git
 
-    Navigate to the project directory:
+    cd Egyscan
 
-cd Egyscan
+
 
 Install the dependencies:
-
-bash
 
     pip install -r requirements.txt
 
@@ -28,10 +27,8 @@ Usage
 
     Run the script:
 
-    bash
 
     python egy.py
-
     Enter the target URL when prompted.
 
     The scanner will collect URLs from the target website and scan them for vulnerabilities. Detected vulnerabilities will be displayed in the console.
