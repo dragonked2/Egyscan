@@ -1,7 +1,6 @@
 # Web Vulnerability Scanner
 # EgyScan V1.0
 This is a simple web vulnerability scanner script that scans a target website for common vulnerabilities. It checks for SQL injection, remote code execution, cross-site scripting (XSS), local file inclusion (LFI), open redirect, backup files, database exposure, directory listings, and sensitive information exposure vulnerabilities.
-![image](https://github.com/dragonked2/Egyscan/assets/66541902/aa9a376f-715a-4722-b819-ecf8005d9b32)
 
 ## Prerequisites
 
@@ -32,6 +31,7 @@ Usage
     Enter the target URL when prompted.
 
     The scanner will collect URLs from the target website and scan them for vulnerabilities. Detected vulnerabilities will be displayed in the console.
+![image](https://github.com/dragonked2/Egyscan/assets/66541902/a10f4711-becc-4737-a42f-c1a858103076)
 
 Customization
 
