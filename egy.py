@@ -6,9 +6,12 @@ from colorama import Fore, Style
 from itertools import islice
 from urllib.robotparser import RobotFileParser
 from ratelimit import limits, sleep_and_retry
+from bs4 import MarkupResemblesLocatorWarning
 import time
 import logging
 import tqdm
+import warnings
+warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 #----------------------------------------------------------
 # Project: Egyscan 
@@ -84,26 +87,30 @@ def check_open_redirect(url):
 
     if parsed_url.netloc in ALLOWED_HOSTS:
         response = requests.get(sanitized_url)
-        if response.status_code == 200 and urlparse(response.url).netloc == "www.google.com":
+        if response.status_code == 302 and urlparse(response.url).netloc == "www.google.com":
             return True
 
     return False
-
 
 def check_backup_files(url):
-    extensions = ["/.bak", "/.zip", "/.tgz"]
+    extensions = [".bak", ".zip", ".tgz"]
+    parsed_url = urlparse(url)
+
     for extension in extensions:
-        response = requests.get(url + extension)
+        backup_url = f"{parsed_url.scheme}://{parsed_url.netloc}/{parsed_url.path}{extension}"
+        response = requests.get(backup_url)
         if response.status_code == 200:
             return True
+
     return False
+
 
 
 def check_database_exposure(url):
     endpoints = ["phpmyadmin", "adminer", "dbadmin"]
     for endpoint in endpoints:
         response = requests.get(url + "/" + endpoint)
-        if response.status_code == 200:
+        if response.status_code == 302:
             return True
     return False
 
@@ -286,7 +293,6 @@ def scan_url(url):
     if check_sensitive_information(url):
         logging.warning(f"Sensitive Information exposure vulnerability found: {url}")
 
-
 # Scan a response for vulnerabilities
 def scan_response(response):
     if check_sqli(response.url):
@@ -313,13 +319,13 @@ def print_colorful(message, color=Fore.GREEN):
     print(color + message + Style.RESET_ALL)
 
 def print_warning(message):
-    print(Fore.YELLOW + "Warning:" + message + Style.RESET_ALL)
+    print(Fore.YELLOW + "Warning: " + message + Style.RESET_ALL)
 
 def print_error(message):
-    print(Fore.RED + "Error:" + message + Style.RESET_ALL)
+    print(Fore.RED + "Error: " + message + Style.RESET_ALL)
 
 def print_info(message):
-    print(Fore.BLUE + "Info:" + message + Style.RESET_ALL)
+    print(Fore.BLUE + "Info: " + message + Style.RESET_ALL)
 
 def main():
     print_colorful("EgyScan V2.0", Fore.YELLOW)
@@ -351,6 +357,7 @@ def main():
     with tqdm.tqdm(total=len(urls), desc="Injecting Payloads", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
             futures = [executor.submit(inject_payloads, url) for url in urls]
+
             for future in as_completed(futures):
                 try:
                     future.result()
