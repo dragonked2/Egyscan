@@ -13,19 +13,11 @@ import tqdm
 import warnings
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
-#----------------------------------------------------------
-# Project: Egyscan 
-# Copyright (c) 2023 dragonked2
-# This code is protected by copyright law. Unauthorized
-# use or distribution is strictly prohibited.
-#----------------------------------------------------------
 
 ALLOWED_HOSTS = ["www.google.com"]
 
-# Configure logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
-# ASCII art glowing logo
 logo = r"""
    ____                   _               __        ______            _             
   / __ \____  _____ ____ ( )_____ ___    / /__     / ____/___  ____ _(_)___  ___   
@@ -35,7 +27,6 @@ logo = r"""
                                                            /____/                 
 """
 
-# Print the glowing logo
 def print_logo():
     glow_colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
     interval = 0.5  # Time interval between color changes (in seconds)
@@ -45,13 +36,11 @@ def print_logo():
         time.sleep(interval)
 
 
-# Constants
 MAX_WORKERS = 20
 REQUESTS_PER_SECOND = 1
 
 payloads = ["'", "\"", "<script>alert('XSS')</script>", "<?php system('id'); ?>", "../../../../etc/passwd"]
 
-# Common Vulnerability Checks
 def check_sqli(url):
     response = requests.get(url)
     if response.status_code == 200 and ("error in SQL syntax" in response.text or "mysql_fetch_array" in response.text or "/var/www" in response.text):
@@ -131,18 +120,15 @@ def check_sensitive_information(url):
     return False
 
 
-# Common session object for making requests
 session = requests.Session()
 
 
-# Rate limiting decorator
 @sleep_and_retry
 @limits(calls=REQUESTS_PER_SECOND, period=1)
 def rate_limited_request(url):
     return session.get(url)
 
 
-# Parse robots.txt for a given URL
 def parse_robots_txt(url):
     parsed_url = urlparse(url)
     robots_txt_url = parsed_url.scheme + "://" + parsed_url.netloc + "/robots.txt"
@@ -152,7 +138,6 @@ def parse_robots_txt(url):
     return parser
 
 
-# Common function to extract URLs from HTML
 def extract_urls_from_html(html, base_url):
     try:
         soup = BeautifulSoup(html, "html.parser")
@@ -167,7 +152,6 @@ def extract_urls_from_html(html, base_url):
         return set()
 
 
-# Collect URLs recursively from the target website and its sub-pages
 def collect_urls(target_url):
     parsed_url = urlparse(target_url)
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
@@ -183,7 +167,6 @@ def collect_urls(target_url):
             while urls:
                 current_url = urls.pop()
 
-                # Skip already processed URLs
                 if current_url in processed_urls:
                     continue
 
@@ -192,7 +175,6 @@ def collect_urls(target_url):
                 future = executor.submit(rate_limited_request, current_url)
                 futures.append(future)
 
-                # Process completed futures
                 for completed_future in as_completed(futures):
                     try:
                         response = completed_future.result()
@@ -219,13 +201,11 @@ def filter_urls(urls, target_domain, processed_urls):
     return filtered_urls
 
 
-# Inject payloads into parameters, query, and form inputs
 def inject_payloads(url):
     parsed_url = urlparse(url)
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
     params = parse_qs(parsed_url.query)
 
-    # Inject payloads into parameters
     processed_parameters = set()
     for param in params:
         if param in processed_parameters:
@@ -243,7 +223,6 @@ def inject_payloads(url):
                 )
                 scan_url(injected_url)
 
-    # Inject payloads into form inputs
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
@@ -272,7 +251,6 @@ def inject_payloads(url):
                         scan_response(response)
 
 
-# Scan a URL for vulnerabilities
 def scan_url(url):
     if check_sqli(url):
         logging.warning(f"SQL Injection vulnerability found: {url}")
@@ -293,7 +271,6 @@ def scan_url(url):
     if check_sensitive_information(url):
         logging.warning(f"Sensitive Information exposure vulnerability found: {url}")
 
-# Scan a response for vulnerabilities
 def scan_response(response):
     if check_sqli(response.url):
         logging.warning(f"SQL Injection vulnerability found: {response.url}")
@@ -329,19 +306,16 @@ def print_info(message):
 
 def main():
     print_colorful("EgyScan V2.0", Fore.YELLOW)
-    # Get the target URL from the user
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
 
     print_logo()
     print_colorful("EgyScan V2.0", Fore.YELLOW)
 
-    # Collect URLs from the target website
     print_info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
 
     print_colorful(f"Found {len(urls)} URLs to scan.", Fore.CYAN)
 
-    # Scan the collected URLs for vulnerabilities
     print_info("Scanning collected URLs for vulnerabilities...")
     with tqdm.tqdm(total=len(urls), desc="Scanning URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -352,7 +326,6 @@ def main():
                 except Exception as e:
                     logging.error(f"Error occurred while scanning URL: {e}")
 
-    # Inject payloads into parameters, query, and form inputs
     print_info("Injecting payloads into parameters, query, and form inputs...")
     with tqdm.tqdm(total=len(urls), desc="Injecting Payloads", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
