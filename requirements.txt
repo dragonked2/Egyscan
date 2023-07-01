@@ -1,6 +1,5 @@
 beautifulsoup4==4.9.3
 colorama==0.4.4
 requests==2.26.0
-ratelimit==2.2.2
 tqdm==4.62.0
 ratelimit
