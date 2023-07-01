@@ -147,14 +147,17 @@ def parse_robots_txt(url):
 
 # Common function to extract URLs from HTML
 def extract_urls_from_html(html, base_url):
-    soup = BeautifulSoup(html, "html.parser")
-    urls = set()
-    for anchor in soup.find_all("a"):
-        href = anchor.get("href")
-        if href:
-            href = urljoin(base_url, href)
-            urls.add(href)
-    return urls
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        urls = set()
+        for anchor in soup.find_all("a"):
+            href = anchor.get("href")
+            if href:
+                href = urljoin(base_url, href)
+                urls.add(href)
+        return urls
+    except bs4.FeatureNotFound:
+        return set()
 
 
 # Collect URLs recursively from the target website and its sub-pages
@@ -220,11 +223,13 @@ def inject_payloads(url):
 
         for payload in payloads:
             injected_params = params.copy()
-            injected_params[param] = [param_value + payload for param_value in injected_params[param]]
-            injected_url = url.split("?")[0] + "?" + "&".join(
-                f"{key}={value}" for key, value in injected_params.items()
-            )
-            scan_url(injected_url)
+            param_values = injected_params.get(param)
+            if param_values is not None:
+                injected_params[param] = [param_value + payload for param_value in param_values]
+                injected_url = url.split("?")[0] + "?" + "&".join(
+                    f"{key}={value}" for key, value in injected_params.items()
+                )
+                scan_url(injected_url)
 
     # Inject payloads into form inputs
     response = requests.get(url)
@@ -248,9 +253,11 @@ def inject_payloads(url):
 
                 for payload in payloads:
                     injected_fields = form_data.copy()
-                    injected_fields[field] = injected_fields.get(field, "") + payload
-                    response = requests.post(form_action, data=injected_fields)
-                    scan_response(response)
+                    field_value = injected_fields.get(field)
+                    if field_value is not None:
+                        injected_fields[field] = field_value + payload
+                        response = requests.post(form_action, data=injected_fields)
+                        scan_response(response)
 
 
 # Scan a URL for vulnerabilities
@@ -298,12 +305,12 @@ def scan_response(response):
 
 
 def main():
-    print("EgyScan V1.0")
+    print("EgyScan V1.1")
     # Get the target URL from the user
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
 
     print_logo()
-    print("EgyScan V1.0")
+    print("EgyScan V1.1")
     # Collect URLs from the target website
     logging.info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
@@ -311,12 +318,18 @@ def main():
     # Scan the collected URLs for vulnerabilities
     logging.info("Scanning collected URLs for vulnerabilities...")
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(scan_url, url) for url in islice(urls, MAX_WORKERS)]
+        futures = [executor.submit(scan_url, url) for url in urls]
         for future in as_completed(futures):
             try:
                 future.result()
             except Exception as e:
-                logging.error(f"An error occurred: {str(e)}")
+                logging.error(f"Error occurred while scanning URL: {e}")
+
+    # Inject payloads into parameters, query, and form inputs
+    logging.info("Injecting payloads into parameters, query, and form inputs...")
+    inject_payloads(target_url)
+
+    logging.info("Scanning completed!")
 
 
 if __name__ == "__main__":
