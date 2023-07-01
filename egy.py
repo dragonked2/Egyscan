@@ -138,19 +138,16 @@ def parse_robots_txt(url):
     return parser
 
 
-def extract_urls_from_html(html, base_url):
-    try:
-        soup = BeautifulSoup(html, "html.parser")
-        urls = set()
-        for anchor in soup.find_all("a"):
-            href = anchor.get("href")
-            if href:
-                href = urljoin(base_url, href)
-                urls.add(href)
-        return urls
-    except bs4.FeatureNotFound:
-        return set()
+def extract_urls_from_html(html):
+    soup = BeautifulSoup(html, "html.parser")
+    urls = set()
 
+    for a_tag in soup.find_all("a"):
+        href = a_tag.get("href")
+        if href and href.startswith("http"):
+            urls.add(href)
+
+    return urls
 
 def collect_urls(target_url):
     parsed_url = urlparse(target_url)
