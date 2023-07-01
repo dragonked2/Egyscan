@@ -138,16 +138,19 @@ def parse_robots_txt(url):
     return parser
 
 
-def extract_urls_from_html(html):
-    soup = BeautifulSoup(html, "html.parser")
-    urls = set()
+def extract_urls_from_html(html, base_url):
+    try:
+        soup = BeautifulSoup(html, "html.parser")
+        urls = set()
+        for anchor in soup.find_all("a"):
+            href = anchor.get("href")
+            if href:
+                href = urljoin(base_url, href)
+                urls.add(href)
+        return urls
+    except bs4.FeatureNotFound:
+        return set()
 
-    for a_tag in soup.find_all("a"):
-        href = a_tag.get("href")
-        if href and href.startswith("http"):
-            urls.add(href)
-
-    return urls
 
 def collect_urls(target_url):
     parsed_url = urlparse(target_url)
@@ -176,7 +179,7 @@ def collect_urls(target_url):
                     try:
                         response = completed_future.result()
                         if response.status_code == 200:
-                            extracted_urls = extract_urls_from_html(response.text, base_url)
+                            extracted_urls = extract_urls_from_html(response.text, current_url)  # Pass current_url as base_url
                             filtered_urls = filter_urls(extracted_urls, parsed_url.netloc, processed_urls)
                             urls.update(filtered_urls)
                     except requests.exceptions.RequestException:
