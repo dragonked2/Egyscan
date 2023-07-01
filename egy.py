@@ -87,11 +87,13 @@ def check_backup_files(url):
 
     for extension in extensions:
         backup_url = f"{parsed_url.scheme}://{parsed_url.netloc}/{parsed_url.path}{extension}"
-        response = requests.get(backup_url)
-        if response.status_code == 200:
-            return True
+        if extension in parsed_url.path:
+            response = requests.get(backup_url)
+            if response.status_code == 200:
+                return True
 
     return False
+
 
 
 
