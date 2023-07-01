@@ -91,7 +91,7 @@ def check_open_redirect(url):
 
 
 def check_backup_files(url):
-    extensions = [".bak", ".zip", ".tgz"]
+    extensions = ["/.bak", "/.zip", "/.tgz"]
     for extension in extensions:
         response = requests.get(url + extension)
         if response.status_code == 200:
@@ -171,29 +171,34 @@ def collect_urls(target_url):
     urls.add(target_url)
 
     with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
-        while urls:
-            current_url = urls.pop()
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = []
+            while urls:
+                current_url = urls.pop()
 
-            # Skip already processed URLs
-            if current_url in processed_urls:
-                continue
+                # Skip already processed URLs
+                if current_url in processed_urls:
+                    continue
 
-            processed_urls.add(current_url)
+                processed_urls.add(current_url)
 
-            try:
-                response = rate_limited_request(current_url)
-                if response.status_code == 200:
-                    extracted_urls = extract_urls_from_html(response.text, base_url)
-                    filtered_urls = filter_urls(extracted_urls, parsed_url.netloc, processed_urls)
-                    urls.update(filtered_urls)
-            except requests.exceptions.RequestException:
-                continue
+                future = executor.submit(rate_limited_request, current_url)
+                futures.append(future)
 
-            # Respect robots.txt rules
-            if not robots_parser.can_fetch("*", current_url):
-                urls.discard(current_url)
+                # Process completed futures
+                for completed_future in as_completed(futures):
+                    try:
+                        response = completed_future.result()
+                        if response.status_code == 200:
+                            extracted_urls = extract_urls_from_html(response.text, base_url)
+                            filtered_urls = filter_urls(extracted_urls, parsed_url.netloc, processed_urls)
+                            urls.update(filtered_urls)
+                    except requests.exceptions.RequestException:
+                        continue
 
-            pbar.update(1)
+                    pbar.update(1)
+
+                futures = [future for future in futures if not future.done()]
 
     return processed_urls
 
@@ -304,33 +309,55 @@ def scan_response(response):
         logging.warning(f"Sensitive Information exposure vulnerability found: {response.url}")
 
 
+def print_colorful(message, color=Fore.GREEN):
+    print(color + message + Style.RESET_ALL)
+
+def print_warning(message):
+    print(Fore.YELLOW + "Warning:" + message + Style.RESET_ALL)
+
+def print_error(message):
+    print(Fore.RED + "Error:" + message + Style.RESET_ALL)
+
+def print_info(message):
+    print(Fore.BLUE + "Info:" + message + Style.RESET_ALL)
+
 def main():
-    print("EgyScan V1.1")
+    print_colorful("EgyScan V2.0", Fore.YELLOW)
     # Get the target URL from the user
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
 
     print_logo()
-    print("EgyScan V1.1")
+    print_colorful("EgyScan V2.0", Fore.YELLOW)
+
     # Collect URLs from the target website
-    logging.info("Collecting URLs from the target website...")
+    print_info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
 
+    print_colorful(f"Found {len(urls)} URLs to scan.", Fore.CYAN)
+
     # Scan the collected URLs for vulnerabilities
-    logging.info("Scanning collected URLs for vulnerabilities...")
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(scan_url, url) for url in urls]
-        for future in as_completed(futures):
-            try:
-                future.result()
-            except Exception as e:
-                logging.error(f"Error occurred while scanning URL: {e}")
+    print_info("Scanning collected URLs for vulnerabilities...")
+    with tqdm.tqdm(total=len(urls), desc="Scanning URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = [executor.submit(scan_url, url) for url in urls]
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    logging.error(f"Error occurred while scanning URL: {e}")
 
     # Inject payloads into parameters, query, and form inputs
-    logging.info("Injecting payloads into parameters, query, and form inputs...")
-    inject_payloads(target_url)
+    print_info("Injecting payloads into parameters, query, and form inputs...")
+    with tqdm.tqdm(total=len(urls), desc="Injecting Payloads", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
+        with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+            futures = [executor.submit(inject_payloads, url) for url in urls]
+            for future in as_completed(futures):
+                try:
+                    future.result()
+                except Exception as e:
+                    logging.error(f"Error occurred while injecting payloads: {e}")
 
     logging.info("Scanning completed!")
-
 
 if __name__ == "__main__":
     main()
