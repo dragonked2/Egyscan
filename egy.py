@@ -43,7 +43,7 @@ payloads = ["'", "\"", "<script>alert('XSS')</script>", "<?php system('id'); ?>"
 
 def check_sqli(url):
     response = requests.get(url)
-    if response.status_code == 200 and ("error in SQL syntax" in response.text or "mysql_fetch_array" in response.text or "/var/www" in response.text):
+    if response.status_code == 200 and ("error in SQL syntax" in response.text or "mysql_fetch_array" in response.text or "/var/www" in response.text or "on line" in response.text or " Trying to access array offset on value of type" in response.text or " at line" in response.text):
         return True
     return False
 
@@ -253,43 +253,43 @@ def inject_payloads(url):
 
 def scan_url(url):
     if check_sqli(url):
-        logging.warning(f"SQL Injection vulnerability found: {url}")
+        logging.warning(f"SQLI: {url}")
     if check_rce(url):
-        logging.warning(f"Remote Code Execution vulnerability found: {url}")
+        logging.warning(f"RCE: {url}")
     if check_xss(url):
-        logging.warning(f"Cross-Site Scripting vulnerability found: {url}")
+        logging.warning(f"XSS: {url}")
     if check_lfi(url):
-        logging.warning(f"Local File Inclusion vulnerability found: {url}")
+        logging.warning(f"LFI: {url}")
     if check_open_redirect(url):
-        logging.warning(f"Open Redirect vulnerability found: {url}")
+        logging.warning(f"Open Redirect: {url}")
     if check_backup_files(url):
-        logging.warning(f"Backup Files vulnerability found: {url}")
+        logging.warning(f"Backup Files: {url}")
     if check_database_exposure(url):
-        logging.warning(f"Database Exposure vulnerability found: {url}")
+        logging.warning(f"Database Exposure: {url}")
     if check_directory_listings(url):
-        logging.warning(f"Directory Listings vulnerability found: {url}")
+        logging.warning(f"Directory Listings: {url}")
     if check_sensitive_information(url):
-        logging.warning(f"Sensitive Information exposure vulnerability found: {url}")
+        logging.warning(f"Sensitive Information exposure: {url}")
 
 def scan_response(response):
     if check_sqli(response.url):
-        logging.warning(f"SQL Injection vulnerability found: {response.url}")
+        logging.warning(f"SQLI: {response.url}")
     if check_rce(response.url):
-        logging.warning(f"Remote Code Execution vulnerability found: {response.url}")
+        logging.warning(f"RCE: {response.url}")
     if check_xss(response.url):
-        logging.warning(f"Cross-Site Scripting vulnerability found: {response.url}")
+        logging.warning(f"XSS: {response.url}")
     if check_lfi(response.url):
-        logging.warning(f"Local File Inclusion vulnerability found: {response.url}")
+        logging.warning(f"LFI: {response.url}")
     if check_open_redirect(response.url):
-        logging.warning(f"Open Redirect vulnerability found: {response.url}")
+        logging.warning(f"Open Redirect: {response.url}")
     if check_backup_files(response.url):
-        logging.warning(f"Backup Files vulnerability found: {response.url}")
+        logging.warning(f"Backup Files: {response.url}")
     if check_database_exposure(response.url):
-        logging.warning(f"Database Exposure vulnerability found: {response.url}")
+        logging.warning(f"Database Exposure: {response.url}")
     if check_directory_listings(response.url):
-        logging.warning(f"Directory Listings vulnerability found: {response.url}")
+        logging.warning(f"Directory Listings: {response.url}")
     if check_sensitive_information(response.url):
-        logging.warning(f"Sensitive Information exposure vulnerability found: {response.url}")
+        logging.warning(f"Sensitive Information: {response.url}")
 
 
 def print_colorful(message, color=Fore.GREEN):
