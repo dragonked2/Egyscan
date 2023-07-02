@@ -10,10 +10,32 @@ Features
 ![image](https://github.com/dragonked2/Egyscan/assets/66541902/45269369-e284-4006-8fcd-d8dd0e0cfdae)
 
 
-    Collects URLs from the target website
-    Scans collected URLs for vulnerabilities
-    Injects payloads into parameters, query strings, and form inputs
-    Reports potential vulnerabilities found during the scanning process
+    Vulnerability Checks: The script checks for various vulnerabilities in the target website, including:
+        SQL Injection (SQLI)
+        Remote Code Execution (RCE)
+        Cross-Site Scripting (XSS)
+        Local File Inclusion (LFI)
+        Open Redirect
+        Backup File Exposure
+        Database Exposure
+        Directory Listings
+        Sensitive Information Exposure
+        XML External Entity (XXE) Injection
+        Server-Side Request Forgery (SSRF)
+        Remote File Inclusion (RFI)
+        Log File Disclosure
+
+    URL Collection: The script collects URLs from the target website by crawling the web pages and extracting links.
+
+    Payload Injection: The script injects payloads into the parameters, query strings, and form inputs of the collected URLs to test for vulnerabilities.
+
+    Multithreading: The script uses a thread pool to parallelize the scanning and payload injection processes, which helps improve performance.
+
+    User-Agent Randomization: The script randomly selects a User-Agent header from a predefined list of user agents for each HTTP request, which can help bypass certain security measures.
+
+    Logging and Output: The script logs the scanning results using different log levels (INFO, WARNING, ERROR) and provides colorful output for better readability.
+
+    User Interaction: The script prompts the user to enter the target URL and displays a logo and information about the tool.
 
 Requirements
 
