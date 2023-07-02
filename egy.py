@@ -5,29 +5,36 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from colorama import Fore, Style
 from itertools import islice
 from urllib.robotparser import RobotFileParser
-from ratelimit import limits, sleep_and_retry
 from bs4 import MarkupResemblesLocatorWarning
 import time
 import logging
 import tqdm
 import warnings
+import random
+
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    # Add more user agents if desired
+]
 
 ALLOWED_HOSTS = ["www.google.com"]
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 
-logo = r"""
-   ____                   _               __        ______            _             
-  / __ \____  _____ ____ ( )_____ ___    / /__     / ____/___  ____ _(_)___  ___   
- / /_/ / __ \/ ___/ ___)|// ___// _ \  / //_/____/ / __/ __ \/ __ `/ / __ \/ _ \  
-/ _, _/ /_/ (__  |__  ) / (__  )  __/ / ,<  /____/ /_/ / /_/ / /_/ / / / / /  __/  
-\___\_\____/____/____/  \___/ \___//_/|_|       \____/\____/\__, /_/_/ /_/\___/   
-                                                           /____/                 
-"""
-
 def print_logo():
+    logo = """
+    ███████╗██╗   ██╗██████╗ ███████╗██████╗  █████╗ ██████╗ ██╗     ███████╗
+    ██╔════╝██║   ██║██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔══██╗██║     ██╔════╝
+    ███████╗██║   ██║██████╔╝█████╗  ██████╔╝███████║██████╔╝██║     █████╗  
+    ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗██╔══██║██╔══██╗██║     ██╔══╝  
+    ███████║╚██████╔╝██║     ███████╗██║  ██║██║  ██║██████╔╝███████╗███████╗
+    ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝
+    """
+    print(logo)
     glow_colors = [Fore.RED, Fore.YELLOW, Fore.GREEN, Fore.CYAN, Fore.BLUE, Fore.MAGENTA]
     interval = 0.5  # Time interval between color changes (in seconds)
 
@@ -37,7 +44,6 @@ def print_logo():
 
 
 MAX_WORKERS = 20
-REQUESTS_PER_SECOND = 1
 
 payloads = ["'", "\"", "<script>alert('XSS')</script>", "<?php system('id'); ?>", "../../../../etc/passwd"]
 
@@ -123,21 +129,12 @@ def check_sensitive_information(url):
 
 
 session = requests.Session()
+session.headers = {
+    "User-Agent": random.choice(USER_AGENTS),
+    # Add other headers if desired
+}
 
 
-@sleep_and_retry
-@limits(calls=REQUESTS_PER_SECOND, period=1)
-def rate_limited_request(url):
-    return session.get(url)
-
-
-def parse_robots_txt(url):
-    parsed_url = urlparse(url)
-    robots_txt_url = parsed_url.scheme + "://" + parsed_url.netloc + "/robots.txt"
-    response = rate_limited_request(robots_txt_url)
-    parser = RobotFileParser()
-    parser.parse(response.text.splitlines())
-    return parser
 
 
 def extract_urls_from_html(html, base_url):
@@ -159,40 +156,35 @@ def collect_urls(target_url):
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
     urls = set()
     processed_urls = set()
-    robots_parser = parse_robots_txt(target_url)
 
     urls.add(target_url)
 
     with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-            futures = []
             while urls:
                 current_url = urls.pop()
-
+                
                 if current_url in processed_urls:
                     continue
 
                 processed_urls.add(current_url)
+                
+                try:
+                    response = requests.get(current_url)
+                    if response.status_code == 200:
+                        soup = BeautifulSoup(response.text, "html.parser")
+                        for link in soup.find_all("a"):
+                            href = link.get("href")
+                            if href:
+                                absolute_url = urljoin(base_url, href)
+                                if absolute_url.startswith(base_url):
+                                    urls.add(absolute_url)
+                except requests.exceptions.RequestException:
+                    continue
 
-                future = executor.submit(rate_limited_request, current_url)
-                futures.append(future)
-
-                for completed_future in as_completed(futures):
-                    try:
-                        response = completed_future.result()
-                        if response.status_code == 200:
-                            extracted_urls = extract_urls_from_html(response.text, current_url)  # Pass current_url as base_url
-                            filtered_urls = filter_urls(extracted_urls, parsed_url.netloc, processed_urls)
-                            urls.update(filtered_urls)
-                    except requests.exceptions.RequestException:
-                        continue
-
-                    pbar.update(1)
-
-                futures = [future for future in futures if not future.done()]
+                pbar.update(1)
 
     return processed_urls
-
 
 def filter_urls(urls, target_domain, processed_urls):
     filtered_urls = set()
@@ -312,6 +304,7 @@ def main():
 
     print_logo()
     print_colorful("EgyScan V2.0", Fore.YELLOW)
+    print_colorful("https://github.com/dragonked2/Egyscan", Fore.BLUE)
 
     print_info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
