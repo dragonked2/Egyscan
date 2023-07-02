@@ -14,7 +14,7 @@ This is a simple web vulnerability scanner script that scans a target website fo
    ```bash
    git clone https://github.com/dragonked2/Egyscan.git
 
-    cd Egyscan
+   cd Egyscan
 
 
 
@@ -24,20 +24,19 @@ Install the dependencies:
 
 Usage
 
-    Run the script:
-
-
     python egy.py
     Enter the target URL when prompted.
 
-    The scanner will collect URLs from the target website and scan them for vulnerabilities. Detected vulnerabilities will be displayed in the console.
-![image](https://github.com/dragonked2/Egyscan/assets/66541902/a10f4711-becc-4737-a42f-c1a858103076)
+The scanner will collect URLs from the target website and scan them for vulnerabilities. Detected vulnerabilities will be displayed in the console.
+
+![image](https://github.com/dragonked2/Egyscan/assets/66541902/efc19fb3-d694-4e12-bf6a-82fba95a5709)
+
 
 Customization
 
-    You can modify the list of payloads in the payloads variable in the script to include additional payloads for injection.
+You can modify the list of payloads in the payloads variable in the script to include additional payloads for injection.
 
-    The maximum number of concurrent workers and requests per second can be adjusted by modifying the MAX_WORKERS and REQUESTS_PER_SECOND constants, respectively.
+The maximum number of concurrent workers and requests per second can be adjusted by modifying the MAX_WORKERS and REQUESTS_PER_SECOND constants, respectively.
 
 Disclaimer
 
