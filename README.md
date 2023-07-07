@@ -11,19 +11,18 @@ Features
 
 
     Vulnerability Checks: The script checks for various vulnerabilities in the target website, including:
-        SQL Injection (SQLI)
-        Remote Code Execution (RCE)
-        Cross-Site Scripting (XSS)
-        Local File Inclusion (LFI)
-        Open Redirect
-        Backup File Exposure
-        Database Exposure
-        Directory Listings
-        Sensitive Information Exposure
-        XML External Entity (XXE) Injection
-        Server-Side Request Forgery (SSRF)
-        Remote File Inclusion (RFI)
-        Log File Disclosure
+    SQL Injection (SQLI)
+    Cross-Site Scripting (XSS)
+    Local File Inclusion (LFI)
+    Open Redirect
+    Backup File Exposure
+    Database Exposure (phpMyAdmin, Adminer, dbadmin)
+    Directory Listings
+    Sensitive Information Exposure (e.g., private keys, credit card numbers)
+    XML External Entity (XXE)
+    Server-Side Request Forgery (SSRF)
+    Remote File Inclusion (RFI)
+    Log File Disclosure
 
     URL Collection: The script collects URLs from the target website by crawling the web pages and extracting links.
 
