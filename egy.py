@@ -348,11 +348,11 @@ def print_info(message):
     print(Fore.BLUE + "Info: " + message + Style.RESET_ALL)
 
 def main():
-    print_colorful("EgyScan V2.0", Fore.YELLOW)
+    print_colorful("EgyScan V1.0", Fore.YELLOW)
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
 
     print_logo()
-    print_colorful("EgyScan V2.0", Fore.YELLOW)
+    print_colorful("EgyScan V1.0", Fore.YELLOW)
     print_colorful("https://github.com/dragonked2/Egyscan", Fore.BLUE)
 
     print_info("Collecting URLs from the target website...")
