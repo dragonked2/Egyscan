@@ -10,20 +10,23 @@ Features
 ![image](https://github.com/dragonked2/Egyscan/assets/66541902/45269369-e284-4006-8fcd-d8dd0e0cfdae)
 
 
-    Vulnerability Checks: The script checks for various vulnerabilities in the target website, including:
-    SQL Injection (SQLI)
-    Cross-Site Scripting (XSS)
-    Local File Inclusion (LFI)
-    Open Redirect
-    Backup File Exposure
-    Database Exposure (phpMyAdmin, Adminer, dbadmin)
-    Directory Listings
-    Sensitive Information Exposure (e.g., private keys, credit card numbers)
-    XML External Entity (XXE)
-    Server-Side Request Forgery (SSRF)
-    Remote File Inclusion (RFI)
-    Log File Disclosure
+Protect your website from vulnerabilities with our advanced security scanning tool! Here are the key vulnerabilities we help you address:
 
+    SQL Injection (SQLI) - Prevent attacks that compromise your database integrity.
+    Remote Code Execution (RCE) - Stay ahead of hackers and safeguard against unauthorized access.
+    Cross-Site Scripting (XSS) - Protect your users' sensitive information from exploitation.
+    Local File Inclusion (LFI) - Secure critical files and prevent confidential information exposure.
+    Open Redirect - Eliminate vulnerabilities that allow attackers to misdirect users.
+    Backup File Exposure - Locate and secure backup files to avoid accidental data leaks.
+    Database Exposure - Detect potential database exposure, including exposed admin interfaces.
+    Directory Listings - Prevent the disclosure of your website's directory structure.
+    Sensitive Information Exposure - Safeguard private keys, API credentials, and other sensitive data.
+    XML External Entity (XXE) - Identify and mitigate vulnerabilities that could lead to data leaks.
+    Server-Side Request Forgery (SSRF) - Bolster defenses against attacks attempting to bypass security measures.
+    Remote File Inclusion (RFI) - Detect and address vulnerabilities that allow unauthorized access.
+    Log File Disclosure - Preserve the confidentiality of log files and protect sensitive data.
+
+Don't leave your website vulnerable to these threats. Contact us today to fortify your defenses and ensure the security of your valuable data!
     URL Collection: The script collects URLs from the target website by crawling the web pages and extracting links.
 
     Payload Injection: The script injects payloads into the parameters, query strings, and form inputs of the collected URLs to test for vulnerabilities.
