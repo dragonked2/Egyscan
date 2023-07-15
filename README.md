@@ -7,7 +7,8 @@ EgyScan V2.0
 
 EgyScan is a vulnerability scanning tool designed to identify potential security vulnerabilities in a target website. It performs various checks for common vulnerabilities such as SQL injection (SQLi), remote code execution (RCE), cross-site scripting (XSS), local file inclusion (LFI), open redirect, backup files, database exposure, directory listings, sensitive information exposure, XML external entity (XXE) injection, server-side request forgery (SSRF), remote file inclusion (RFI), and log file disclosure.
 Features
-![image](https://github.com/dragonked2/Egyscan/assets/66541902/45269369-e284-4006-8fcd-d8dd0e0cfdae)
+![image](https://github.com/dragonked2/Egyscan/assets/66541902/5019ee3c-1965-4761-8ce2-84e0ec40751f)
+
 
 
 Protect your website from vulnerabilities with our advanced security scanning tool! Here are the key vulnerabilities we help you address:
