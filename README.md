@@ -1,88 +1,124 @@
-EgyScan V2.0
-<br>
-![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Github License](https://img.shields.io/badge/license-GPLv3-blue.svg)
-![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)
+# EgyScan V2.0
+
+[![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Github License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+[![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
+
 <p align="center">
-<br>
+  <img src="https://github.com/dragonked2/Egyscan/assets/66541902/c769777f-7e6a-4d1f-8907-bb4e75c8d01e" alt="EgyScan Logo">
+</p>
 
-<br>
-EgyScan is a vulnerability scanning tool designed to identify potential security vulnerabilities in a target website. It performs various checks for common vulnerabilities such as SQL injection (SQLi), remote code execution (RCE), cross-site scripting (XSS), local file inclusion (LFI), open redirect, backup files, database exposure, directory listings, sensitive information exposure, XML external entity (XXE) injection, server-side request forgery (SSRF), remote file inclusion (RFI), and log file disclosure.
-Features
-<br>
+## Protect Your Website from Vulnerabilities with EgyScan
 
-![image](https://github.com/dragonked2/Egyscan/assets/66541902/c769777f-7e6a-4d1f-8907-bb4e75c8d01e)
+EgyScan is an advanced vulnerability scanning tool designed to identify potential security risks in your website. Our comprehensive scanning capabilities help you address key vulnerabilities, ensuring the protection of your valuable data.
 
-Protect your website from vulnerabilities with our advanced security scanning tool! Here are the key vulnerabilities we help you address:
+## Key Features
 
-    SQL Injection (SQLI) - Prevent attacks that compromise your database integrity.
-    Remote Code Execution (RCE) - Stay ahead of hackers and safeguard against unauthorized access.
-    Cross-Site Scripting (XSS) - Protect your users' sensitive information from exploitation.
-    Local File Inclusion (LFI) - Secure critical files and prevent confidential information exposure.
-    Open Redirect - Eliminate vulnerabilities that allow attackers to misdirect users.
-    Backup File Exposure - Locate and secure backup files to avoid accidental data leaks.
-    Database Exposure - Detect potential database exposure, including exposed admin interfaces.
-    Directory Listings - Prevent the disclosure of your website's directory structure.
-    Sensitive Information Exposure - Safeguard private keys, API credentials, and other sensitive data.
-    XML External Entity (XXE) - Identify and mitigate vulnerabilities that could lead to data leaks.
-    Server-Side Request Forgery (SSRF) - Bolster defenses against attacks attempting to bypass security measures.
-    Remote File Inclusion (RFI) - Detect and address vulnerabilities that allow unauthorized access.
-    Log File Disclosure - Preserve the confidentiality of log files and protect sensitive data.
+- **Thorough Scanning**: EgyScan performs a wide range of checks to identify common vulnerabilities, including:
+  
+  - SQL Injection
+  - Remote Code Execution
+  - Cross-Site Scripting (XSS)
+  - Local File Inclusion (LFI)
+  - Open Redirect
+  - Backup Files
+  - Database Exposure
+  - Directory Listings
+  - Sensitive Information Exposure
+  - XML External Entity (XXE) Injection
+  - Server-Side Request Forgery (SSRF)
+  - Remote File Inclusion (RFI)
+  - Log File Disclosure
+  - Insecure Direct Object Reference (IDOR)
+  - Cross-Origin Resource Sharing (CORS)
+  - Cross-Site Request Forgery (CSRF)
+  - Command Injection
+  - File Upload Vulnerabilities
+  - Authentication Bypass
+  - Insecure Configuration
+  - Server Misconfiguration
+  - Injection Flaws
+  - Weak Session Management
+  - Clickjacking
+  - Host Header Injection
+  - Remote File Execution
+  - Brute Force Attacks
+  - Security Misconfiguration
+  - Missing Authentication
+  - CRLF Injection
+  - Session Fixation
+  - Unvalidated Redirects
+  - Command Execution
+  - Cross-Site Tracing
+  - Server-Side Template Injection
+  - File Inclusion
+  - Privilege Escalation
+  - XML Injection
+  - Weak Cryptography
+  - Deserialization Vulnerabilities
+  - Server-Side Request Forgery (SSRF)
+  
+- **URL Collection**: EgyScan collects URLs from your target website by crawling web pages and extracting links.
 
-Don't leave your website vulnerable to these threats. Contact us today to fortify your defenses and ensure the security of your valuable data!
-    URL Collection: The script collects URLs from the target website by crawling the web pages and extracting links.
+- **Payload Injection**: The tool injects payloads into parameters, query strings, and form inputs of the collected URLs to test for vulnerabilities.
 
-    Payload Injection: The script injects payloads into the parameters, query strings, and form inputs of the collected URLs to test for vulnerabilities.
+- **Multithreading**: EgyScan utilizes a thread pool to parallelize scanning and payload injection processes, enhancing performance.
 
-    Multithreading: The script uses a thread pool to parallelize the scanning and payload injection processes, which helps improve performance.
+- **User-Agent Randomization**: The tool randomly selects a User-Agent header from a predefined list for each HTTP request, aiding in bypassing certain security measures.
 
-    User-Agent Randomization: The script randomly selects a User-Agent header from a predefined list of user agents for each HTTP request, which can help bypass certain security measures.
+- **Logging and Output**: EgyScan logs scanning results with different log levels (INFO, WARNING, ERROR) and provides colorful output for improved readability.
 
-    Logging and Output: The script logs the scanning results using different log levels (INFO, WARNING, ERROR) and provides colorful output for better readability.
+Don't leave your website vulnerable to threats. Contact us today to fortify your defenses and ensure the security of your valuable data!
 
-    User Interaction: The script prompts the user to enter the target URL and displays a logo and information about the tool.
+## Requirements
 
-Requirements
+- Python 3.x
+- requests library
+- bs4 (BeautifulSoup) library
+- colorama library
+- tqdm library
 
-    Python 3.x
-    requests library
-    bs4 (BeautifulSoup) library
-    colorama library
-    tqdm library
+## Installation
 
-Installation
+1. Clone the repository:
 
-    Clone the repository:
+   ```shell
+   git clone https://github.com/dragonked2/Egyscan.git
+   ```
 
-    shell
+2. Install the required dependencies:
 
-git clone https://github.com/dragonked2/Egyscan.git
+   ```shell
+   pip install -r requirements.txt
+   ```
 
-Install the required dependencies:
+## Usage
 
-shell
+1. Run the tool:
 
-    pip install -r requirements.txt
+   ```shell
+   python egy.py
+   ```
 
-Usage
+2. Enter the target URL to scan for vulnerabilities.
 
-    Run the tool:
-
-    shell
-
-    python egy.py
-
-    Enter the target URL to scan for vulnerabilities.
-
-Disclaimer
+## Disclaimer
 
 This tool is intended for educational purposes only. Use it responsibly and only on websites that you have permission to test.
-License
 
-This project is licensed under the MIT License. See the LICENSE file for details.
-Contributions
+## License
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+
+## Contributions
 
 Contributions to improve and enhance the tool are welcome. Feel free to submit issues and pull requests.
-Acknowledgments
 
-    EgyScan V2.0 was developed by [AliElTop].
+## Acknowledgments
+
+EgyScan V2.0 was developed by [AliElTop].
+
+---
+
+[![Sponsor](https://img.shields.io/badge/sponsor-project_name-orange.svg)](https://github.com/sponsors/username)
+[![Star](https://img.shields.io/badge/star-project_name-yellow.svg)](https://github.com/dragonked2/Egyscan)
