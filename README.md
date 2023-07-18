@@ -120,5 +120,5 @@ EgyScan V2.0 was developed by [AliElTop].
 
 ---
 
-[![Sponsor](https://img.shields.io/badge/sponsor-project_name-orange.svg)](https://github.com/sponsors/username)
+[![Sponsor](https://img.shields.io/badge/sponsor-project_name-orange.svg)](https://github.com/sponsors/dragonked2)
 [![Star](https://img.shields.io/badge/star-project_name-yellow.svg)](https://github.com/dragonked2/Egyscan)
