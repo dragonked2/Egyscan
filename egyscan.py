@@ -16,6 +16,8 @@ import aiohttp
 import ssl
 import traceback
 import defusedxml.ElementTree as ET
+import functools
+from queue import Queue
 from colorama import Fore, Style, init
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, urljoin, parse_qs
@@ -27,8 +29,6 @@ from bs4 import MarkupResemblesLocatorWarning
 
 
 init(autoreset=True)
-response = requests.get(url, verify=False)
-response = requests.get(url, timeout=10)
 payloads = [
     "'; SELECT * FROM users; --",
     "<script>alert('XSS')</script>",
@@ -915,7 +915,6 @@ def check_xss(url):
 
     return False
 
-
 def check_lfi(url):
     try:
         response = requests.get(url)
@@ -951,30 +950,43 @@ def check_lfi(url):
             r"\.\.\/",
             r"\/\/",
             r"file:\/\/\/",
+            r"index\.php",
         ]
 
         for pattern in lfi_patterns:
             if re.search(pattern, response.text, re.IGNORECASE):
-                return True
+                test_url = url + "/index.php"
+                test_response = requests.get(test_url)
+                if test_response.status_code == 200:
+                    return True, "Local File Inclusion: Possible local file inclusion vulnerability detected."
 
-    except (requests.RequestException, UnicodeDecodeError):
+    except (requests.RequestException, UnicodeDecodeError) as e:
+        print(f"Error occurred: {e}")
+
+    return False
+
+def check_open_redirect(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        payload = "http://www.google.com"
+        sanitized_url = urljoin(url, payload)
+        parsed_url = urlparse(sanitized_url)
+
+        if parsed_url.netloc in ALLOWED_HOSTS:
+            redirect_response = requests.get(sanitized_url, allow_redirects=False)
+            if redirect_response.status_code == 302 and is_valid_redirect(redirect_response.headers.get('Location')):
+                test_url = url + "/test"  
+                test_response = requests.get(test_url)
+                if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                    return True, "Open Redirect: Possible open redirect vulnerability detected."
+
+    except requests.RequestException:
         pass
 
     return False
 
-
-
-def check_open_redirect(url):
-    payload = "http://www.google.com"
-    sanitized_url = urljoin(url, payload)
-    parsed_url = urlparse(sanitized_url)
-
-    if parsed_url.netloc in ALLOWED_HOSTS:
-        response = requests.get(sanitized_url, allow_redirects=False)
-        if response.status_code == 302 and is_valid_redirect(response.headers.get('Location')):
-            return True
-
-    return False
 
 def is_valid_redirect(redirect_url):
     parsed_redirect_url = urlparse(redirect_url)
@@ -988,14 +1000,27 @@ def check_backup_files(url):
     for extension in extensions:
         backup_url = f"{parsed_url.scheme}://{parsed_url.netloc}{parsed_url.path}{extension}"
         response = requests.get(backup_url)
-        if response.status_code == 200 and is_valid_backup(response.headers.get('Content-Type')):
-            return True
+        if response.status_code == 200 and is_valid_backup(response.headers.get('Content-Type'), response.content):
+            return True, "Backup Files: Possible backup file found."
 
     return False
 
-def is_valid_backup(content_type):
+
+def is_valid_backup(content_type, content):
     valid_types = ["application/octet-stream", "application/zip", "application/x-gzip"]
-    return content_type in valid_types
+    if content_type in valid_types:
+        return not is_binary_file(BytesIO(content))
+
+    return False
+
+
+def is_binary_file(file):
+    try:
+        file.read(0)
+        return False
+    except UnicodeDecodeError:
+        return True
+
 
 def check_database_exposure(url):
     endpoints = ["phpmyadmin", "adminer", "dbadmin"]
@@ -1003,18 +1028,26 @@ def check_database_exposure(url):
         full_url = url.rstrip("/") + "/" + endpoint
         response = requests.head(full_url)
         if response.status_code == 200 and is_database_console(response.headers.get('Content-Type')):
-            return True
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Database Exposure: Possible database administration console found."
+
     return False
+
 
 def is_database_console(content_type):
     valid_types = ["text/html", "text/plain"]
     return content_type in valid_types
 
+
 def check_directory_listings(url):
     response = requests.get(url, allow_redirects=False)
     if response.status_code == 200 and is_directory_listing(response.headers.get('Content-Type'), response.text):
-        return True
+        return True, "Directory Listings: Possible directory listing enabled."
+
     return False
+
 
 def is_directory_listing(content_type, response_text):
     valid_types = ["text/html"]
@@ -1022,14 +1055,19 @@ def is_directory_listing(content_type, response_text):
 
 
 def check_sensitive_information(url):
-    keywords = ["private_key", "creditcard", "api_key", "secret_key", "password", "access_token", "auth_token"]
+    keywords = ["private_key", "creditcard", "api_key", "secret_key", "access_token", "auth_token"]
     response = requests.get(url)
-    response_text = response.text.lower()  
+    response_text = response.text.lower()
     for keyword in keywords:
         if keyword in response_text:
-            return True
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Sensitive Information: Possible sensitive information exposed."
+
     return False
-    
+
+
 def check_log_files(url):
     log_files = ["access.log", "error.log", "log.log"]
     parsed_url = urlparse(url)
@@ -1037,341 +1075,549 @@ def check_log_files(url):
     for log_file in log_files:
         log_url = f"{parsed_url.scheme}://{parsed_url.netloc}/{log_file}"
         response = requests.get(log_url)
-        if response.status_code == 200 and is_valid_log_file(response.headers.get('Content-Type'), response.text):
-            return True
+        if response.status_code == 200 and is_valid_log_file(response.headers.get('Content-Type'), response.content):
+            return True, "Log Files: Possible log file exposure."
 
     return False
 
-def is_valid_log_file(content_type, response_text):
+
+def is_valid_log_file(content_type, content):
     valid_types = ["text/plain"]
-    return content_type in valid_types and "log content" in response_text
-    
-def check_xxe(url):
-    payload = '<?xml version="1.0" encoding="ISO-8859-1"?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM "file:///etc/passwd" >]><foo>&xxe;</foo>'
-    headers = {'Content-Type': 'application/xml'}
-    response = requests.post(url, data=payload, headers=headers)
-    if response.status_code == 200 and is_xxe_detected(response.text):
-        return True
+    if content_type in valid_types:
+        return not is_binary_file(BytesIO(content))
+
     return False
+
+
+def check_xxe(url):
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        payload = '<?xml version="1.0" encoding="ISO-8859-1"?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM "file:///etc/passwd" >]><foo>&xxe;</foo>'
+        headers = {'Content-Type': 'application/xml'}
+        xxe_response = requests.post(url, data=payload, headers=headers)
+        if xxe_response.status_code == 200 and is_xxe_detected(xxe_response.text):
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "XML External Entity (XXE): Possible XXE vulnerability detected."
+
+    except requests.RequestException:
+        pass
+
+    return False
+
 
 def is_xxe_detected(response_text):
     xxe_keywords = ["root:", "admin:", "password:", "etc/passwd"]
     for keyword in xxe_keywords:
         if keyword in response_text:
             return True
+
     return False
-    
+
+
 def check_ssrf(url):
-    payload = "http://169.254.169.254/latest/meta-data/iam/security-credentials/admin"
-    params = {'url': payload}
-    response = requests.get(url, params=params)
-    if response.status_code == 200 and is_ssrf_detected(response.text):
-        return True
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        payload = "http://169.254.169.254/latest/meta-data/iam/security-credentials/admin"
+        params = {'url': payload}
+        ssrf_response = requests.get(url, params=params)
+        if ssrf_response.status_code == 200 and is_ssrf_detected(ssrf_response.text):
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Server-Side Request Forgery (SSRF): Possible SSRF vulnerability detected."
+
+    except requests.RequestException:
+        pass
+
     return False
+
 
 def is_ssrf_detected(response_text):
     ssrf_keywords = ["AccessDenied", "Forbidden", "Unauthorized"]
     for keyword in ssrf_keywords:
         if keyword in response_text:
             return True
+
     return False
 
+
 def check_rfi(url):
-    payload = "https://raw.githubusercontent.com/dragonked2/Egyscan/main/README.md"
-    response = requests.get(url + "?file=" + payload)
-    if response.status_code == 200 and is_rfi_detected(response.text):
-        return True
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+
+        payload = "https://raw.githubusercontent.com/dragonked2/Egyscan/main/README.md"
+        rfi_response = requests.get(url + "?file=" + payload)
+        if rfi_response.status_code == 200 and is_rfi_detected(rfi_response.text):
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Remote File Inclusion (RFI): Possible RFI vulnerability detected."
+
+    except requests.RequestException:
+        pass
+
     return False
+
 
 def is_rfi_detected(response_text):
     rfi_keywords = ["EgyScan V2.0", "RFI Detected", "Remote File Inclusion"]
     for keyword in rfi_keywords:
         if keyword in response_text:
             return True
+
     return False
-    
+
 
 def check_idor(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'id=["\']([^"\']+)', response.text, re.IGNORECASE):
-            return True, "Insecure Direct Object Reference: Possible ID found in the response."
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Insecure Direct Object Reference (IDOR): Possible IDOR vulnerability detected."
+
     except requests.RequestException:
         pass
-    return False, ""
+
+    return False
+
 
 def check_cors(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Access-Control-Allow-Origin' in response.headers:
-            return True, "Cross-Origin Resource Sharing: Access-Control-Allow-Origin header found."
+            test_url = url + "/test"  
+            test_response = requests.get(test_url)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Cross-Origin Resource Sharing (CORS): Possible CORS vulnerability detected."
+
     except requests.RequestException:
         pass
-    return False, ""
+
+    return False
+
 
 def check_csrf(url):
     try:
-        response = requests.get(url)
+        session = requests.Session()
+        response = session.get(url)
         response.raise_for_status()
-        if 'CSRF-Token' in response.headers:
-            return True, "Cross-Site Request Forgery: CSRF-Token header found."
+
+        csrf_token = None
+        if 'Set-Cookie' in response.headers:
+            cookies = session.cookies.get_dict()
+            csrf_token = cookies.get('csrftoken')
+
+        if not csrf_token:
+            if 'csrf_token' in response.text:
+                match = re.search(r'<input[^>]+name=["\']csrf_token["\'][^>]+value=["\']([^"\']+)["\']', response.text, re.IGNORECASE)
+                if match:
+                    csrf_token = match.group(1)
+
+        if csrf_token:
+            headers = {'Referer': url, 'X-CSRFToken': csrf_token}
+            test_url = url + "/test"  
+            test_response = session.post(test_url, headers=headers)
+            if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                return True, "Cross-Site Request Forgery (CSRF): Possible CSRF vulnerability detected."
+
     except requests.RequestException:
         pass
-    return False, ""
+
+    return False
+
+
 
 def check_command_injection(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(\bexec\b|\bpopen\b|\bshell_exec\b)', response.text, re.IGNORECASE):
-            return True, "Command Injection: Potential command execution function found in the response."
+            if re.search(r'Command Injection', response.text, re.IGNORECASE):
+                command = "echo vulnerable"  
+                response = requests.get(url + "&command=" + command)
+                if "vulnerable" in response.text:
+                    return True, "Command Injection: Potential command execution function found in the response."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_file_upload_vulnerabilities(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'multipart/form-data' in response.headers:
-            return True, "File Upload Vulnerabilities: Multipart form data detected in the response."
+            if re.search(r'File Upload Vulnerabilities', response.text, re.IGNORECASE):
+                files = {'file': open('test.php', 'rb')}  
+                response = requests.post(url, files=files)
+                if "File uploaded successfully" in response.text:
+                    return True, "File Upload Vulnerabilities: Multipart form data detected in the response."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_authentication_bypass(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Authentication' in response.headers and response.status_code != 401:
-            return True, "Authentication Bypass: Possible authentication bypass detected."
+            if re.search(r'Authentication Bypass', response.text, re.IGNORECASE):
+                session = requests.Session() 
+                bypass_response = session.get(url)
+                if bypass_response.status_code != 401:
+                    return True, "Authentication Bypass: Possible authentication bypass detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_insecure_configuration(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(config|configuration)', response.text, re.IGNORECASE):
-            return True, "Insecure Configuration: Possible configuration information found in the response."
+            if re.search(r'Insecure Configuration', response.text, re.IGNORECASE):
+                test_url = url + "/test" 
+                response = requests.get(test_url)
+                if response.status_code == 200 and "Test Successful" in response.text:
+                    return True, "Insecure Configuration: Possible configuration information found in the response."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_server_misconfiguration(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(Misconfiguration|error)', response.text, re.IGNORECASE):
-            return True, "Server Misconfiguration: Possible server misconfiguration detected."
+            if re.search(r'Server Misconfiguration', response.text, re.IGNORECASE):
+                test_url = url + "/test" 
+                response = requests.get(test_url)
+                if response.status_code == 200 and "Test Successful" in response.text:
+                    return True, "Server Misconfiguration: Possible server misconfiguration detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_injection_flaws(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(injection|inject)', response.text, re.IGNORECASE):
-            return True, "Injection Flaws: Possible injection vulnerability detected."
+            if re.search(r'Injection Flaws', response.text, re.IGNORECASE):
+                test_payload = "1' OR '1'='1"  
+                response = requests.get(url + "?param=" + test_payload)
+                if "Injection Successful" in response.text:
+                    return True, "Injection Flaws: Possible injection vulnerability detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_weak_session_management(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(session|cookie)', response.text, re.IGNORECASE):
-            return True, "Weak Session Management: Possible weak session management detected."
+            if re.search(r'Weak Session Management', response.text, re.IGNORECASE):
+                session = requests.Session()  
+                session_response = session.get(url)
+                if session_response.cookies and session_response.cookies.get('session_id'):
+                    session_id = session_response.cookies['session_id']
+                    session.cookies.set('session_id', session_id)
+                    test_url = url + "/test"  
+                    test_response = session.get(test_url)
+                    if test_response.status_code == 200 and "Test Successful" in test_response.text:
+                        return True, "Weak Session Management: Possible weak session management detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_clickjacking(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'X-Frame-Options' not in response.headers or 'Content-Security-Policy' not in response.headers:
-            return True, "Clickjacking: Missing X-Frame-Options or Content-Security-Policy headers."
+            if re.search(r'Clickjacking', response.text, re.IGNORECASE):
+                test_url = url + "/test" 
+                response = requests.get(test_url)
+                if "Test Successful" in response.text:
+                    return True, "Clickjacking: Missing X-Frame-Options or Content-Security-Policy headers."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_host_header_injection(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Host' in response.headers and 'X-Forwarded-Host' not in response.headers:
-            return True, "Host Header Injection: Possible Host header injection detected."
+            if re.search(r'Host Header Injection', response.text, re.IGNORECASE):
+                headers = {'Host': 'example.com'} 
+                response = requests.get(url, headers=headers)
+                if "Injection Successful" in response.text:
+                    return True, "Host Header Injection: Possible Host header injection detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_remote_file_execution(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(include|require|include_once|require_once)\s*["\'][^"\']+\.php["\']', response.text, re.IGNORECASE):
-            return True, "Remote File Execution: Possible remote file inclusion detected."
+            if re.search(r'Remote File Execution', response.text, re.IGNORECASE):
+                include_url = url + "?file=php://filter/convert.base64-encode/resource=config" 
+                response = requests.get(include_url)
+                if "Include Successful" in response.text:
+                    return True, "Remote File Execution: Possible remote file inclusion detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_brute_force_attacks(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Login' in response.text or 'Username' in response.text or 'Password' in response.text:
-            return True, "Brute Force Attacks: Possible login page or authentication mechanism detected."
+            if re.search(r'Brute Force Attacks', response.text, re.IGNORECASE):
+                session = requests.Session() 
+                for i in range(3):
+                    login_data = {'username': 'admin', 'password': '123456'}  
+                    response = session.post(url + "/login", data=login_data)
+                    if response.status_code == 200 and "Login Failed" in response.text:
+                        return True, "Brute Force Attacks: Possible login page or authentication mechanism detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_security_misconfiguration(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(Security|secure|misconfiguration)', response.text, re.IGNORECASE):
-            return True, "Security Misconfiguration: Possible security misconfiguration detected."
+            if re.search(r'Security Misconfiguration', response.text, re.IGNORECASE):
+                test_url = url + "/test"  
+                response = requests.get(test_url)
+                if response.status_code == 200 and "Test Successful" in response.text:
+                    return True, "Security Misconfiguration: Possible security misconfiguration detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_missing_authentication(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Authentication' not in response.headers and response.status_code != 401:
-            return True, "Missing Authentication: Possible missing authentication mechanism."
+            if re.search(r'Missing Authentication', response.text, re.IGNORECASE):
+                test_url = url + "/test"  
+                response = requests.get(test_url)
+                if response.status_code == 200 and "Test Successful" in response.text:
+                    return True, "Missing Authentication: Possible missing authentication mechanism."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_crlf_injection(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'%0D%0A|[\r\n]|%0D|%0A', response.text, re.IGNORECASE):
-            return True, "CRLF Injection: Possible CRLF injection detected."
+            if re.search(r'CRLF Injection', response.text, re.IGNORECASE):
+                payload = "Injected%0D%0AContent:%20Test"  
+                response = requests.get(url + "?param=" + payload)
+                if "Injection Successful" in response.text:
+                    return True, "CRLF Injection: Possible CRLF injection detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_session_fixation(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Session' in response.headers and 'Set-Cookie' in response.headers:
-            return True, "Session Fixation: Possible session fixation vulnerability detected."
+            if re.search(r'Session Fixation', response.text, re.IGNORECASE):
+                session = requests.Session()  
+                test_url = url + "/test"  
+                response = session.get(test_url)
+                if response.status_code == 200 and "Test Successful" in response.text:
+                    return True, "Session Fixation: Possible session fixation vulnerability detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_unvalidated_redirects(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'Location' in response.headers and response.status_code in [301, 302, 303, 307, 308]:
-            return True, "Unvalidated Redirects: Possible unvalidated redirects detected."
+            if re.search(r'Unvalidated Redirects', response.text, re.IGNORECASE):
+                redirect_url = "https://www.github.com/dragonked2/Egyscan"  
+                response = requests.get(url + "?redirect=" + redirect_url)
+                if "Redirect Successful" in response.text:
+                    return True, "Unvalidated Redirects: Possible unvalidated redirects detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_command_execution(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(exec|popen|shell_exec|system|passthru|proc_open)\s*[(\']', response.text, re.IGNORECASE):
-            return True, "Command Execution: Possible command execution function found in the response."
+            if re.search(r'Command Execution', response.text, re.IGNORECASE):
+                command = "echo vulnerable"  
+                response = requests.get(url + "&command=" + command)
+                if "vulnerable" in response.text:
+                    return True, "Command Execution: Possible command execution function found in the response."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_cross_site_tracing(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'TRACE' in response.text or 'TRACE' in response.headers:
-            return True, "Cross-Site Tracing: TRACE method enabled."
+            if re.search(r'Cross-Site Tracing', response.text, re.IGNORECASE):
+                test_url = url + "/test"  
+                headers = {'TRACE': '1'}  
+                response = requests.get(test_url, headers=headers)
+                if "TRACE Successful" in response.text:
+                    return True, "Cross-Site Tracing: TRACE method enabled."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_server_side_template_injection(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(template|render|smarty|twig|mustache|handlebars|liquid|jinja)', response.text, re.IGNORECASE):
-            return True, "Server-Side Template Injection: Possible server-side template injection detected."
+            if re.search(r'Server-Side Template Injection', response.text, re.IGNORECASE):
+                payload = "{{7*7}}" 
+                response = requests.get(url + "?param=" + payload)
+                if "49" in response.text:
+                    return True, "Server-Side Template Injection: Possible server-side template injection detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_file_inclusion(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(include|require|include_once|require_once)\s*["\'][^"\']+\.php["\']', response.text, re.IGNORECASE):
-            return True, "File Inclusion: Possible file inclusion vulnerability detected."
+            if re.search(r'File Inclusion', response.text, re.IGNORECASE):
+                include_url = url + "?file=config" 
+                response = requests.get(include_url)
+                if "Include Successful" in response.text:
+                    return True, "File Inclusion: Possible file inclusion vulnerability detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_privilege_escalation(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(admin|root|superuser)', response.text, re.IGNORECASE):
-            return True, "Privilege Escalation: Possible privilege escalation detected."
+            if re.search(r'Privilege Escalation', response.text, re.IGNORECASE):
+                user = "admin"  
+                response = requests.get(url + "?user=" + user)
+                if "Privilege Escalation Successful" in response.text:
+                    return True, "Privilege Escalation: Possible privilege escalation detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_xml_injection(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'<\s*[\w-]+:?\w+.*?>', response.text):
-            return True, "XML Injection: Possible XML injection detected."
+            if re.search(r'XML Injection', response.text, re.IGNORECASE):
+                payload = "<user><name>John Doe</name></user>"
+                response = requests.post(url, data=payload)
+                if "Injection Successful" in response.text:
+                    return True, "XML Injection: Possible XML injection detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_weak_cryptography(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if 'SSL' in response.headers or 'TLS' in response.headers:
-            return True, "Weak Cryptography: Possible weak cryptography detected."
+            if re.search(r'Weak Cryptography', response.text, re.IGNORECASE):
+                test_url = url.replace("http://", "https://") 
+                response = requests.get(test_url)
+                if "HTTPS Connection Successful" in response.text:
+                    return True, "Weak Cryptography: Possible weak cryptography detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_deserialization_vulnerabilities(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(unserialize|deserialize)', response.text, re.IGNORECASE):
-            return True, "Deserialization Vulnerabilities: Possible deserialization vulnerability detected."
+            if re.search(r'Deserialization Vulnerabilities', response.text, re.IGNORECASE):
+                serialized_data = "TzozOiJkZXNpZ25hdGlvbmFsIjtiYXNlNjRfZGVzdHJveSI7czoxMDoiYmFzZTY0X3N0b3JhZ2UiO30=" 
+                response = requests.get(url + "?data=" + serialized_data)
+                if "Deserialization Successful" in response.text:
+                    return True, "Deserialization Vulnerabilities: Possible deserialization vulnerability detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
 def check_server_side_request_forgery(url):
     try:
         response = requests.get(url)
         response.raise_for_status()
         if re.search(r'(SSRF|url=|uri=)', response.text, re.IGNORECASE):
-            return True, "Server-Side Request Forgery: Possible server-side request forgery detected."
+            if re.search(r'Server-Side Request Forgery', response.text, re.IGNORECASE):
+                target_url = "https://www.example.com"  
+                response = requests.get(url + "?target=" + target_url)
+                if "Request Successful" in response.text:
+                    return True, "Server-Side Request Forgery: Possible server-side request forgery detected."
     except requests.RequestException:
         pass
-    return False, ""
+    return False
 
-    
+
+session = requests.Session()
+adapter = requests.adapters.HTTPAdapter(pool_connections=10, pool_maxsize=100)
+session.mount('http://', adapter)
+session.mount('https://', adapter)
+
+response_cache = {}
+
+def get_response(url):
+    if url in response_cache:
+        return response_cache[url]
+    else:
+        response = session.get(url)
+        response_cache[url] = response
+        return response
+
+# HEAD Requests
+def get_url_status(url):
+    response = session.head(url)
+    return response.status_code
+
 def collect_urls(target_url, num_threads=10):
     parsed_target_url = urlparse(target_url)
     target_domain = parsed_target_url.netloc
@@ -1380,7 +1626,7 @@ def collect_urls(target_url, num_threads=10):
     processed_urls = set()
     urls.add(target_url)
 
-    processed_urls_lock = threading.Lock() 
+    processed_urls_lock = threading.Lock()
 
     def extract_urls_from_html(html, base_url):
         soup = BeautifulSoup(html, 'html.parser')
@@ -1405,14 +1651,14 @@ def collect_urls(target_url, num_threads=10):
         nonlocal urls, processed_urls
         try:
             if current_url.startswith("javascript:"):
-                return set()  
+                return set()
 
-            response = requests.get(current_url) 
+            response = get_response(current_url)
             if response.status_code == 200:
                 extracted_urls = extract_urls_from_html(response.text, current_url)
                 filtered_urls = filter_urls(extracted_urls, target_domain, processed_urls)
 
-                with processed_urls_lock:  
+                with processed_urls_lock:
                     processed_urls.update(filtered_urls)
 
                 urls.update(filtered_urls)
@@ -1424,21 +1670,52 @@ def collect_urls(target_url, num_threads=10):
         return set()
 
     with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
-        with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-            while urls:
-                current_urls = list(urls)  
-                urls.clear()
+        task_queue = Queue()
 
-                futures = [executor.submit(process_url, url) for url in current_urls]
-                for future in concurrent.futures.as_completed(futures):
-                    try:
-                        filtered_urls = future.result()
-                        urls.update(filtered_urls)
-                    except Exception as e:
-                        logging.error(f"Error occurred while processing URL: {e}")
+        @functools.lru_cache(maxsize=None)
+        def validate_url(url):
+            try:
+                parsed_url = urlparse(url)
+                return all([parsed_url.scheme, parsed_url.netloc])
+            except ValueError:
+                return False
 
-                pbar.total = len(urls) + len(processed_urls)
-                pbar.update(len(current_urls))
+        def worker():
+            while True:
+                current_url = task_queue.get()
+                if current_url is None:
+                    task_queue.task_done()
+                    break
+                if validate_url(current_url):
+                    filtered_urls = process_url(current_url)
+                    task_queue.task_done()
+                else:
+                    task_queue.task_done()
+                    logging.warning(f"Invalid URL: {current_url}")
+
+        workers = []
+        for _ in range(num_threads):
+            t = threading.Thread(target=worker)
+            t.start()
+            workers.append(t)
+
+        while urls:
+            current_urls = list(urls)
+            urls.clear()
+
+            for url in current_urls:
+                task_queue.put(url)
+
+            task_queue.join()
+
+            pbar.total = len(urls) + len(processed_urls)
+            pbar.update(len(current_urls))
+
+        for _ in range(num_threads):
+            task_queue.put(None)
+
+        for worker in workers:
+            worker.join()
 
     return processed_urls
     
@@ -1462,12 +1739,12 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
                     injected_params[param] = [param_value + payload]
 
                     injected_url = url.split("?")[0] + "?" + "&".join(
-                        f"{key}={value}" for key, value in injected_params.items()
+                        f"{key}={value[0]}" for key, value in injected_params.items()
                     )
-                    response = requests.get(injected_url)
+                    response = make_request(injected_url)
                     scan_response(response, vulnerable_urls)
 
-    response = requests.get(url)
+    response = make_request(url)
     scan_response(response, vulnerable_urls)
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -1494,8 +1771,26 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
                         for payload in payloads:
                             injected_fields = form_data.copy()
                             injected_fields[field] = field_value + payload
-                            response = requests.post(form_action, data=injected_fields)
+                            response = make_request(form_action, data=injected_fields, method="POST")
                             scan_response(response, vulnerable_urls)
+
+
+def make_request(url, data=None, method="GET"):
+    session = requests.Session()
+    session.verify = True
+    session.headers = {
+        "User-Agent": random.choice(USER_AGENTS),
+    }
+
+    if method == "GET":
+        response = session.get(url)
+    elif method == "POST":
+        response = session.post(url, data=data)
+    else:
+        raise ValueError(f"Invalid HTTP method: {method}")
+
+    response.raise_for_status()
+    return response
 
 
 
@@ -1549,6 +1844,7 @@ def scan_response(response, vulnerable_urls, threads=10):
             print_warning(f"{vulnerability_type}{response.url}")
             vulnerable_urls.add(response.url)
 
+
 def save_vulnerable_urls(vulnerable_urls):
     with open("vulnerable_urls.txt", "a") as file:
         for url in vulnerable_urls:
@@ -1566,6 +1862,7 @@ def print_error(message):
 def print_info(message):
     print_colorful("Info: " + message, Fore.BLUE)
 
+
 def main():
     print_logo()
     print(f"EgyScan V2.0\nhttps://github.com/dragonked2/Egyscan")
@@ -1576,11 +1873,30 @@ def main():
     if not parsed_url.scheme:
         target_url = "http://" + target_url
 
-    session = requests.Session()
-    session.verify = True 
-    session.headers = {
-        "User-Agent": random.choice(USER_AGENTS),
-    }
+    user_choice = input("Do you want to scan inside the user dashboard? (yes/no): ")
+
+    if user_choice.lower() == "yes":
+        request_file = input("Please enter the path or name of the request file: ")
+
+        with open(request_file, 'r') as file:
+            request_content = file.read()
+
+        headers, body = request_content.split('\n\n', 1)
+        cookies = headers.split('Cookie: ')[1].strip()
+        headers = headers.split('\n')[1:]
+
+        session = requests.Session()
+        session.verify = True
+        session.headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+            "Cookie": cookies
+        }
+    else:
+        session = requests.Session()
+        session.verify = True
+        session.headers = {
+            "User-Agent": random.choice(USER_AGENTS),
+        }
 
     print_info("Collecting URLs from the target website...")
     urls = collect_urls(target_url)
@@ -1590,12 +1906,13 @@ def main():
     print_info("Scanning collected URLs for vulnerabilities...")
     pbar = tqdm.tqdm(total=len(urls), desc="Scanning URLs", unit="URL")
     vulnerable_urls = set()
-    with ThreadPoolExecutor(max_workers=50) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
         futures = [
             executor.submit(scan_and_inject_payloads, url, payloads, vulnerable_urls)
             for url in urls
         ]
-        for future in as_completed(futures):
+
+        for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
             except Exception as e:
@@ -1607,6 +1924,7 @@ def main():
 
     save_vulnerable_urls(vulnerable_urls)
     print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+
 
 if __name__ == "__main__":
     main()
