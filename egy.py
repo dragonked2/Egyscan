@@ -20,9 +20,8 @@ import functools
 from queue import Queue
 from colorama import Fore, Style, init
 from bs4 import BeautifulSoup
-from urllib.parse import urlparse, urljoin, parse_qs
+from urllib.parse import urlparse, parse_qs, urljoin, quote
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from colorama import Fore, Style
 from itertools import islice
 from urllib.robotparser import RobotFileParser
 from bs4 import MarkupResemblesLocatorWarning
@@ -44,6 +43,10 @@ payloads = [
     ";ls",
     "ls",
     "admin.php",
+    "+9739343777;phone-context=<script>alert(1)</script>",
+    "+91 97xxxx7x7;ext=1;ext=2",
+    "+91 97xxxx7x7;phone-context=' OR 1=1; -",
+    "+91 97xxxx7x7;phone-context={{4*4}}{{5+5}}",
     "robots.txt",
     "adminer.php",
     "phpmyadmin",
@@ -915,6 +918,7 @@ def check_xss(url):
 
     return False
 
+
 def check_lfi(url):
     try:
         response = requests.get(url)
@@ -925,39 +929,47 @@ def check_lfi(url):
             r"require\s*[\"'][^\"']+\.php[\"']",
             r"include_once\s*[\"'][^\"']+\.php[\"']",
             r"require_once\s*[\"'][^\"']+\.php[\"']",
-            r"file_get_contents\s*\(\s*[\"'][^\"']+\.php[\"']",
-            r"readfile\s*\(\s*[\"'][^\"']+\.php[\"']",
             r"php://filter/.*read=convert.base64-.*resource=[^&]+",
-            r"php://input",
             r"data:text\/html;base64,",
-            r"expect:\/\/",
             r"zlib:\/\/",
             r"php:\/\/filter\/",
             r"filter\.var_dump",
-            r"dl\s*\(",
-            r"ini_restore\s*\(",
-            r"openlog\s*\(",
-            r"mail\s*\(",
-            r"exec\s*\(",
-            r"passthru\s*\(",
-            r"shell_exec\s*\(",
-            r"system\s*\(",
-            r"popen\s*\(",
-            r"proc_open\s*\(",
-            r"eval\s*\(",
-            r"assert\s*\(",
-            r"preg_replace\s*\(",
-            r"\.\.\/",
+            r"file(?:_get_(?:contents|contents|contents)|_contents)\s*\(\s*[\"'][^\"']+\.(?:php(?:3|4|5|7)?|phtml)[\"']",
+            r"(?i)\b(?:[a-z]+://|\.{0,2}/)\w+(?:/[\w./]*)*\.php(?:[?#]|$)",
+            r"\.\./",
             r"\/\/",
             r"file:\/\/\/",
             r"index\.php",
+            r"phpinfo\s*\(",
+            r"highlight_file\s*\(",
+            r"var_dump\s*\(",
+            r"getenv\s*\(",
+            r"show_source\s*\(",
+            r"readlink\s*\(",
+            r"readfile\s*\(",
+            r"exif_read_data\s*\(",
+            r"system\s*\(",
+            r"shell_exec\s*\(",
+            r"exec\s*\(",
+            r"passthru\s*\(",
+            r"popen\s*\(",
+            r"proc_open\s*\(",
+            r"assert\s*\(",
+            r"eval\s*\(",
+            r"file_put_contents\s*\(",
+            r"fopen\s*\(",
+            r"copy\s*\(",
+            r"move_uploaded_file\s*\(",
+            r"tempnam\s*\(",
+            r"rename\s*\(",
+            r"symlink\s*\(",
         ]
 
         for pattern in lfi_patterns:
             if re.search(pattern, response.text, re.IGNORECASE):
                 test_url = url + "/index.php"
                 test_response = requests.get(test_url)
-                if test_response.status_code == 200:
+                if test_response.status_code == 200 and "Test Successful" in test_response.text:
                     return True, "Local File Inclusion: Possible local file inclusion vulnerability detected."
 
     except (requests.RequestException, UnicodeDecodeError) as e:
@@ -1007,20 +1019,19 @@ def check_backup_files(url):
 
 
 def is_valid_backup(content_type, content):
-    valid_types = ["application/octet-stream", "application/zip", "application/x-gzip"]
+    valid_types = {"application/octet-stream", "application/zip", "application/x-gzip"}
+
     if content_type in valid_types:
-        return not is_binary_file(BytesIO(content))
+        return not is_binary_file(content)
 
     return False
 
 
 def is_binary_file(file):
     try:
-        file.read(0)
-        return False
-    except UnicodeDecodeError:
+        return isinstance(file.read(0), bytes)
+    except io.UnsupportedOperation:
         return True
-
 
 def check_database_exposure(url):
     endpoints = ["phpmyadmin", "adminer", "dbadmin"]
@@ -1037,7 +1048,7 @@ def check_database_exposure(url):
 
 
 def is_database_console(content_type):
-    valid_types = ["text/html", "text/plain"]
+    valid_types = {"text/html", "text/plain"}
     return content_type in valid_types
 
 
@@ -1050,7 +1061,7 @@ def check_directory_listings(url):
 
 
 def is_directory_listing(content_type, response_text):
-    valid_types = ["text/html"]
+    valid_types = {"text/html"}
     return content_type in valid_types and "Index of" in response_text
 
 
@@ -1082,12 +1093,8 @@ def check_log_files(url):
 
 
 def is_valid_log_file(content_type, content):
-    valid_types = ["text/plain"]
-    if content_type in valid_types:
-        return not is_binary_file(BytesIO(content))
-
-    return False
-
+    valid_types = {"text/plain"}
+    return content_type in valid_types and not is_binary_file(content)
 
 def check_xxe(url):
     try:
@@ -1111,11 +1118,7 @@ def check_xxe(url):
 
 def is_xxe_detected(response_text):
     xxe_keywords = ["root:", "admin:", "password:", "etc/passwd"]
-    for keyword in xxe_keywords:
-        if keyword in response_text:
-            return True
-
-    return False
+    return any(keyword in response_text for keyword in xxe_keywords)
 
 
 def check_ssrf(url):
@@ -1140,11 +1143,7 @@ def check_ssrf(url):
 
 def is_ssrf_detected(response_text):
     ssrf_keywords = ["AccessDenied", "Forbidden", "Unauthorized"]
-    for keyword in ssrf_keywords:
-        if keyword in response_text:
-            return True
-
-    return False
+    return any(keyword in response_text for keyword in ssrf_keywords)
 
 
 def check_rfi(url):
@@ -1168,11 +1167,7 @@ def check_rfi(url):
 
 def is_rfi_detected(response_text):
     rfi_keywords = ["EgyScan V2.0", "RFI Detected", "Remote File Inclusion"]
-    for keyword in rfi_keywords:
-        if keyword in response_text:
-            return True
-
-    return False
+    return any(keyword in response_text for keyword in rfi_keywords)
 
 
 def check_idor(url):
@@ -1589,7 +1584,7 @@ def check_server_side_request_forgery(url):
         response.raise_for_status()
         if re.search(r'(SSRF|url=|uri=)', response.text, re.IGNORECASE):
             if re.search(r'Server-Side Request Forgery', response.text, re.IGNORECASE):
-                target_url = "https://www.example.com"  
+                target_url = "https://www.google.com"  
                 response = requests.get(url + "?target=" + target_url)
                 if "Request Successful" in response.text:
                     return True, "Server-Side Request Forgery: Possible server-side request forgery detected."
@@ -1613,7 +1608,6 @@ def get_response(url):
         response_cache[url] = response
         return response
 
-# HEAD Requests
 def get_url_status(url):
     response = session.head(url)
     return response.status_code
@@ -1720,59 +1714,62 @@ def collect_urls(target_url, num_threads=10):
     return processed_urls
     
 def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
-    parsed_url = urlparse(url)
-    base_url = parsed_url.scheme + "://" + parsed_url.netloc
-    params = parse_qs(parsed_url.query)
+    def make_request(url, data=None, method="GET"):
+        with requests.Session() as session:
+            if method.upper() == "POST":
+                response = session.post(url, data=data)
+            else:
+                response = session.get(url)
+        return response
 
-    processed_parameters = set()
-    for param in params:
-        if param in processed_parameters:
-            continue
+    def inject_payloads(url, params, payloads, vulnerable_urls):
+        base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
 
-        processed_parameters.add(param)
-
-        param_values = params.get(param)
-        if param_values is not None:
+        for param, param_values in params.items():
             for param_value in param_values:
                 for payload in payloads:
                     injected_params = params.copy()
                     injected_params[param] = [param_value + payload]
-
                     injected_url = url.split("?")[0] + "?" + "&".join(
-                        f"{key}={value[0]}" for key, value in injected_params.items()
+                        f"{key}={quote(value[0])}" for key, value in injected_params.items()
                     )
                     response = make_request(injected_url)
                     scan_response(response, vulnerable_urls)
+
+    def scan_response(response, vulnerable_urls):
+        for check_func, vulnerability_type in vulnerability_checks.items():
+            if check_func(response.url):
+                print_warning(f"{vulnerability_type}{response.url}")
+                vulnerable_urls.add(response.url)
+
+    parsed_url = urlparse(url)
+    params = parse_qs(parsed_url.query)
+
+    inject_payloads(url, params, payloads, vulnerable_urls)
 
     response = make_request(url)
     scan_response(response, vulnerable_urls)
 
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
-    for form in forms:
+
+    def scan_form(form):
         form_action = form.get("action")
         if form_action:
             if not form_action.startswith("http"):
                 form_action = urljoin(base_url, form_action)
-
             form_inputs = form.find_all(["input", "textarea"])
             form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
+            inject_payloads(form_action, form_data, payloads, vulnerable_urls)
 
-            processed_fields = set()
-            for field in form_data:
-                if field in processed_fields:
-                    continue
-
-                processed_fields.add(field)
-
-                field_values = form_data.get(field)
-                if field_values is not None:
-                    for field_value in field_values:
-                        for payload in payloads:
-                            injected_fields = form_data.copy()
-                            injected_fields[field] = field_value + payload
-                            response = make_request(form_action, data=injected_fields, method="POST")
-                            scan_response(response, vulnerable_urls)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+        executor.map(scan_form, forms)
+def scan_response(response, vulnerable_urls):
+    sanitized_url = re.escape(response.url)
+    for check_func, vulnerability_type in vulnerability_checks.items():
+        if check_func(sanitized_url):
+            print_warning(f"{vulnerability_type}{response.url}")
+            vulnerable_urls.add(response.url)
 
 
 def make_request(url, data=None, method="GET"):
@@ -1838,11 +1835,6 @@ vulnerability_checks = {
     check_server_side_request_forgery: "Server-Side Request Forgery\n"
 }
 
-def scan_response(response, vulnerable_urls, threads=10):
-    for check_func, vulnerability_type in vulnerability_checks.items():
-        if check_func(response.url):
-            print_warning(f"{vulnerability_type}{response.url}")
-            vulnerable_urls.add(response.url)
 
 
 def save_vulnerable_urls(vulnerable_urls):
@@ -1850,81 +1842,123 @@ def save_vulnerable_urls(vulnerable_urls):
         for url in vulnerable_urls:
             file.write(url + "\n")
 
+
 def print_colorful(message, color=Fore.GREEN):
     print(color + message + Style.RESET_ALL)
 
 def print_warning(message):
-    print_colorful("\nBingo: " + message, Fore.YELLOW)
+    print_colorful("\n[Bingo]: " + message, Fore.CYAN)
 
 def print_error(message):
-    print_colorful("Error: " + message, Fore.RED)
+    print_colorful("[Error]: " + message, Fore.RED)
 
 def print_info(message):
-    print_colorful("Info: " + message, Fore.BLUE)
+    print_colorful("[Info]: " + message, Fore.MAGENTA)
 
 
-def main():
-    print_logo()
-    print(f"EgyScan V2.0\nhttps://github.com/dragonked2/Egyscan")
 
+def load_websites_from_file(file_path):
+    try:
+        with open(file_path, 'r') as file:
+            websites = file.read().splitlines()
+        return websites
+    except FileNotFoundError:
+        print_error(f"File '{file_path}' not found.")
+        return []
+
+def get_target_url():
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
-
     parsed_url = urlparse(target_url)
     if not parsed_url.scheme:
         target_url = "http://" + target_url
+    return target_url
+def create_session(cookies=None):
+    session = requests.Session()
+    session.verify = True
+    session.headers = {
+        "User-Agent": random.choice(USER_AGENTS),
+    }
+    if cookies:
+        session.headers["Cookie"] = cookies
+    return session
+def main():
+    print_logo()
+    print("EgyScan V2.0\nhttps://github.com/dragonked2/Egyscan")
 
-    user_choice = input("Do you want to scan inside the user dashboard? (yes/no): ")
+    while True:
+        user_choice = input("Choose an option:\n1. Enter the target URL to scan for vulnerabilities\n2. Load a list of websites from a txt file\nEnter your choice (1 or 2): ")
 
-    if user_choice.lower() == "yes":
-        request_file = input("Please enter the path or name of the request file: ")
+        if user_choice == "1":
+            target_url = get_target_url()
 
-        with open(request_file, 'r') as file:
-            request_content = file.read()
+            user_choice = input("Do you want to scan inside the user dashboard? (yes/no): ").lower()
+            session = None
+            if user_choice == "yes":
+                request_file = input("Please enter the path or name of the request file: ")
+                with open(request_file, 'r') as file:
+                    request_content = file.read()
+                headers, body = request_content.split('\n\n', 1)
+                cookies = headers.split('Cookie: ')[1].strip()
+                headers = headers.split('\n')[1:]
+                session = create_session(cookies)
+            else:
+                session = create_session()
 
-        headers, body = request_content.split('\n\n', 1)
-        cookies = headers.split('Cookie: ')[1].strip()
-        headers = headers.split('\n')[1:]
+            print_info("Collecting URLs from the target website...")
+            urls = collect_urls(target_url)
 
-        session = requests.Session()
-        session.verify = True
-        session.headers = {
-            "User-Agent": random.choice(USER_AGENTS),
-            "Cookie": cookies
-        }
-    else:
-        session = requests.Session()
-        session.verify = True
-        session.headers = {
-            "User-Agent": random.choice(USER_AGENTS),
-        }
+            print(f"Found {len(urls)} URLs to scan.")
 
-    print_info("Collecting URLs from the target website...")
-    urls = collect_urls(target_url)
+            print_info("Scanning collected URLs for vulnerabilities...")
+            vulnerable_urls = set()
 
-    print(f"Found {len(urls)} URLs to scan.")
+            for url in tqdm.tqdm(urls, desc="Scanning URLs", unit="URL"):
+                try:
+                    scan_and_inject_payloads(url, payloads, vulnerable_urls)
+                except Exception as e:
+                    print_error(f"Error occurred while scanning URL: {e}")
 
-    print_info("Scanning collected URLs for vulnerabilities...")
-    pbar = tqdm.tqdm(total=len(urls), desc="Scanning URLs", unit="URL")
-    vulnerable_urls = set()
-    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
-        futures = [
-            executor.submit(scan_and_inject_payloads, url, payloads, vulnerable_urls)
-            for url in urls
-        ]
+            print_info("Scanning completed!")
 
-        for future in concurrent.futures.as_completed(futures):
+            save_vulnerable_urls(vulnerable_urls)
+            print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+            break
+
+        elif user_choice == "2":
+            file_path = input("Enter the path of the txt file containing the list of websites: ")
             try:
-                future.result()
-            except Exception as e:
-                print_error(f"Error occurred while scanning URL: {e}")
-            pbar.update(1)
+                with open(file_path, 'r') as file:
+                    websites = file.read().splitlines()
+            except FileNotFoundError:
+                print_error("File not found.")
+                continue
 
-    pbar.close()
-    print_info("Scanning completed!")
+            if not websites:
+                print_error("No websites loaded from the file.")
+                continue
 
-    save_vulnerable_urls(vulnerable_urls)
-    print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+            print_info(f"Loaded {len(websites)} websites from the file.")
 
+            print_info("Scanning websites from the file...")
+            vulnerable_urls = set()
+
+            for website in tqdm.tqdm(websites, desc="Scanning Websites", unit="Website"):
+                try:
+                    urls = collect_urls(website)
+                    for url in urls:
+                        scan_and_inject_payloads(url, payloads, vulnerable_urls)
+                except Exception as e:
+                    print_error(f"Error occurred while scanning website: {e}")
+
+            print_info("Scanning completed!")
+
+            save_vulnerable_urls(vulnerable_urls)
+            print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+            break
+
+        else:
+            print_error("Invalid choice. Please choose option 1 or 2.")
+            continue
 
 if __name__ == "__main__":
     main()
