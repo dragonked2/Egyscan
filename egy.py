@@ -31,6 +31,7 @@ init(autoreset=True)
 payloads = [
     "'; SELECT * FROM users; --",
     "<script>alert('XSS')</script>",
+    "<script>alert('AliElTop')</script>",
     "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>",
     "malicious_payload.php",
     "admin' OR '1'='1",
@@ -193,13 +194,15 @@ logging.basicConfig(level=logging.WARNING, format="%(levelname)s - %(message)s")
 
 def print_logo():
     logo = """
-    ███████╗██╗   ██╗██████╗ ███████╗██████╗  █████╗ ██████╗ ██╗     ███████╗
-    ██╔════╝██║   ██║██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔══██╗██║     ██╔════╝
-    ███████╗██║   ██║██████╔╝█████╗  ██████╔╝███████║██████╔╝██║     █████╗  
-    ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗██╔══██║██╔══██╗██║     ██╔══╝  
-    ███████║╚██████╔╝██║     ███████╗██║  ██║██║  ██║██████╔╝███████╗███████╗
-    ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚══════╝╚══════╝
+
+███████╗░██████╗░██╗░░░██╗░██████╗░█████╗░░█████╗░███╗░░██╗
+██╔════╝██╔════╝░╚██╗░██╔╝██╔════╝██╔══██╗██╔══██╗████╗░██║
+█████╗░░██║░░██╗░░╚████╔╝░╚█████╗░██║░░╚═╝███████║██╔██╗██║
+██╔══╝░░██║░░╚██╗░░╚██╔╝░░░╚═══██╗██║░░██╗██╔══██║██║╚████║
+███████╗╚██████╔╝░░░██║░░░██████╔╝╚█████╔╝██║░░██║██║░╚███║
+╚══════╝░╚═════╝░░░░╚═╝░░░╚═════╝░░╚════╝░╚═╝░░╚═╝╚═╝░░╚══╝
     """
+
     print(logo)
 
 MAX_WORKERS = 50
@@ -882,8 +885,6 @@ def check_xss(url):
         response.raise_for_status()
 
         xss_patterns = [
-            r"<script\b[^>]*>[^<]*<\/script>",
-            r"<script[^>]*>",
             r"on\w+\s*=",
             r"javascript:\s*;",
             r"eval\(",
@@ -907,6 +908,7 @@ def check_xss(url):
             r"url\s*\(",
             r"import\s*(",
             r"XSS",
+            r"AliElTop",
         ]
 
         for pattern in xss_patterns:
@@ -1786,7 +1788,7 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
     def scan_response(response, vulnerable_urls):
         for check_func, vulnerability_type in vulnerability_checks.items():
             if check_func(response.url):
-                print_warning(f"{vulnerability_type}: {response.url}")
+                print_warning(f"{vulnerability_type}{response.url}")
                 vulnerable_urls.add(response.url)
 
         for waf_name, waf_signatures in common_wafs.items():
@@ -1836,23 +1838,6 @@ def scan_response(response, vulnerable_urls):
             print_warning(f"{vulnerability_type}{response.url}")
             vulnerable_urls.add(response.url)
 
-
-def make_request(url, data=None, method="GET"):
-    session = requests.Session()
-    session.verify = True
-    session.headers = {
-        "User-Agent": random.choice(USER_AGENTS),
-    }
-
-    if method == "GET":
-        response = session.get(url)
-    elif method == "POST":
-        response = session.post(url, data=data)
-    else:
-        raise ValueError(f"Invalid HTTP method: {method}")
-
-    response.raise_for_status()
-    return response
 
 
 
