@@ -1713,13 +1713,60 @@ def collect_urls(target_url, num_threads=10):
 
     return processed_urls
     
+detected_wafs = []
+
+common_wafs = {
+    "cloudflare": ["cloudflare", "__cfduid", "cf-ray", "cf-cache-status"],
+    "akamai": ["akamai-gtm", "akamai-origin-hop", "akamai-policy", "akamai-edgescape"],
+    "sucuri": ["sucuri/", "sucuri_cloudproxy"],
+    "incapsula": ["incap_ses", "visid_incap", "nlbielc", "incap_user"],
+    "mod_security": ["mod_security", "mod_security_crs"],
+    "f5_big_ip": ["f5_bigip"],
+    "fortinet": ["fortiwaf"],
+    "barracuda": ["barra_counter_session"],
+    "imperva": ["incap_ses", "visid_incap", "nlbielc", "incap_user"],
+    "citrix": ["citrix_ns_id", "citrix_ns_id_nocache"],
+    "aws_waf": ["awselb", "awselb/"],
+    "dosarrest": ["dosarrest"],
+    "netlify": ["netlify"],
+    "akamai_ghost": ["akamai_ghost"],
+    "radware_appwall": ["radware_appwall"],
+    "snapt": ["_snapt"],
+    "wallarm": ["_wa_"],
+    "approach": ["approach"],
+    "baidu_waf": ["baidu_waf", "baidu_uda"],
+    "beyond_security": ["beyond_security"],
+    "binarysec": ["binarysec"],
+    "bitgravity": ["bitgravity"],
+    "cache_fly": ["cache_fly"],
+    "checkpoint": ["citrix_adc", "citrix_application_delivery_controller"],
+    "comodo_cwatch": ["comodo_cwatch"],
+    "denyall": ["denyall"],
+    "edgecast": ["edgecast"],
+    "limelight": ["limelight"],
+    "mission_control": ["mission_control"],
+    "netcontinuum": ["netcontinuum"],
+    "perimeterx": ["perimeterx"],
+    "profense": ["profense"],
+    "reblaze": ["reblaze"],
+    "rs_firewall": ["rs_firewall"],
+    "sitelock": ["sitelock"],
+    "usenix": ["usenix"],
+    "varnish": ["varnish"],
+    "vesystem": ["vesystem"],
+    "vidado": ["vidado"],
+}
+
 def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
     def make_request(url, data=None, method="GET"):
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        }
         with requests.Session() as session:
             if method.upper() == "POST":
-                response = session.post(url, data=data)
+                response = session.post(url, data=data, headers=headers)
             else:
-                response = session.get(url)
+                response = session.get(url, headers=headers)
         return response
 
     def inject_payloads(url, params, payloads, vulnerable_urls):
@@ -1739,8 +1786,20 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
     def scan_response(response, vulnerable_urls):
         for check_func, vulnerability_type in vulnerability_checks.items():
             if check_func(response.url):
-                print_warning(f"{vulnerability_type}{response.url}")
+                print_warning(f"{vulnerability_type}: {response.url}")
                 vulnerable_urls.add(response.url)
+
+        for waf_name, waf_signatures in common_wafs.items():
+            for signature in waf_signatures:
+                if signature.lower() in response.headers.get("Server", "").lower():
+                    if waf_name not in detected_wafs:
+                        detected_wafs.append(waf_name)
+
+        print("Response:EgyScan Version 2.0")
+        print(f"Status Code: {response.status_code}")
+        print(f"Server: {response.headers.get('Server', 'N/A')}")
+        print(f"Server Version: {response.headers.get('X-Powered-By', 'N/A')}")
+        print("--------------")
 
     parsed_url = urlparse(url)
     params = parse_qs(parsed_url.query)
@@ -1764,6 +1823,12 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         executor.map(scan_form, forms)
+
+    if detected_wafs:
+        print("Detected WAFs:")
+        for waf in detected_wafs:
+            print(f"- {waf}")
+            
 def scan_response(response, vulnerable_urls):
     sanitized_url = re.escape(response.url)
     for check_func, vulnerability_type in vulnerability_checks.items():
@@ -1847,13 +1912,13 @@ def print_colorful(message, color=Fore.GREEN):
     print(color + message + Style.RESET_ALL)
 
 def print_warning(message):
-    print_colorful("\n[Bingo]: " + message, Fore.CYAN)
+    print_colorful("\n[Bingo]" + message, Fore.CYAN)
 
 def print_error(message):
-    print_colorful("[Error]: " + message, Fore.RED)
+    print_colorful("[Error]" + message, Fore.RED)
 
 def print_info(message):
-    print_colorful("[Info]: " + message, Fore.MAGENTA)
+    print_colorful("[Info]" + message, Fore.MAGENTA)
 
 
 
@@ -1881,6 +1946,21 @@ def create_session(cookies=None):
     if cookies:
         session.headers["Cookie"] = cookies
     return session
+def get_target_url():
+    while True:
+        user_input = input("Enter the target URL(e.g., https://example.com or 127.0.0.1:5400): ")
+
+        if not user_input.startswith(("http://", "https://")):
+            user_input = "http://" + user_input
+
+        try:
+            response = requests.get(user_input)
+            response.raise_for_status()
+        except requests.exceptions.RequestException:
+            print_error("Invalid URL or unable to connect. Please try again.")
+            continue
+
+        return user_input
 def main():
     print_logo()
     print("EgyScan V2.0\nhttps://github.com/dragonked2/Egyscan")
@@ -1912,7 +1992,7 @@ def main():
             print_info("Scanning collected URLs for vulnerabilities...")
             vulnerable_urls = set()
 
-            for url in tqdm.tqdm(urls, desc="Scanning URLs", unit="URL"):
+            for url in tqdm.tqdm(urls, desc="Scanning Website", unit="URL"):
                 try:
                     scan_and_inject_payloads(url, payloads, vulnerable_urls)
                 except Exception as e:
