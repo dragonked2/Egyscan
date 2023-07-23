@@ -78,6 +78,7 @@ Don't leave your website vulnerable to threats. Contact us today to fortify your
 - bs4 (BeautifulSoup) library
 - colorama library
 - tqdm library
+- aiohttp
 
 ## Installation
 
