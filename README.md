@@ -69,6 +69,7 @@ EgyScan is an advanced vulnerability scanning tool designed to identify potentia
 - **Logging and Output**: EgyScan logs scanning results with different log levels (INFO, WARNING, ERROR) and provides colorful output for improved readability.
 
 Don't leave your website vulnerable to threats. Contact us today to fortify your defenses and ensure the security of your valuable data!
+![image](https://github.com/dragonked2/Egyscan/assets/66541902/02de4e3a-d571-4d90-afad-e9966e44057e)
 
 ## Requirements
 
