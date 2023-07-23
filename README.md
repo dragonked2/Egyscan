@@ -119,7 +119,10 @@ Contributions to improve and enhance the tool are welcome. Feel free to submit i
 ## Acknowledgments
 
 EgyScan V2.0 was developed by [AliElTop].
-HashTages 
+
+
+
+    Hash Tag
     #EgyScan
     #VulnerabilityScanner
     #WebSecurity
