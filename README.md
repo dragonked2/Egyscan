@@ -119,7 +119,32 @@ Contributions to improve and enhance the tool are welcome. Feel free to submit i
 ## Acknowledgments
 
 EgyScan V2.0 was developed by [AliElTop].
-
+HashTages 
+    #EgyScan
+    #VulnerabilityScanner
+    #WebSecurity
+    #WebsiteProtection
+    #CyberSecurityTool
+    #URLCollection
+    #PayloadInjection
+    #Multithreading
+    #UserAgentRandomization
+    #LoggingAndOutput
+    #WebVulnerabilities
+    #WebsiteSafety
+    #DataProtection
+    #CyberDefense
+    #CyberSafety
+    #SecureYourWebsite
+    #WebsiteRiskAssessment
+    #SecurityMeasures
+    #WebsiteSafetyScan
+    #SecureYourData
+    #WebsiteSecurityTool
+    #EnhancePerformance
+    #ProtectYourWebsite
+    #WebApplicationSecurity
+    #StayProtected
 ---
 
 [![Sponsor](https://img.shields.io/badge/sponsor-project_name-orange.svg)](https://github.com/sponsors/dragonked2)
