@@ -1644,7 +1644,7 @@ def collect_urls(target_url, num_threads=10, session=None):
                     filtered_urls.add(url)
         return filtered_urls
 
-    def process_url(current_url):
+    def process_url(current_url, num_threads=10):
         nonlocal urls, processed_urls
         try:
             if current_url.startswith("javascript:"):
@@ -1660,10 +1660,8 @@ def collect_urls(target_url, num_threads=10, session=None):
 
                 with urls_lock:
                     urls.update(filtered_urls)
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Request Exception for URL: {current_url}, Error: {e}")
-        except Exception as e:
-            logging.error(f"Error occurred for URL: {current_url}, Error: {e}")
+        except Exception:
+            pass
 
         return set()
 
@@ -1689,7 +1687,6 @@ def collect_urls(target_url, num_threads=10, session=None):
                     task_queue.task_done()
                 else:
                     task_queue.task_done()
-                    logging.warning(f"Invalid URL: {current_url}")
 
         workers = []
         for _ in range(num_threads):
@@ -1716,7 +1713,7 @@ def collect_urls(target_url, num_threads=10, session=None):
             worker.join()
 
     return processed_urls
-   
+    
 detected_wafs = []
 
 common_wafs = {
@@ -1866,7 +1863,7 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
     response = make_request(url, headers=headers)
     scan_response(response, vulnerable_urls)
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    soup = BeautifulSoup(response.text, "lxml")
     forms = soup.find_all("form")
 
     form_chunks = [forms[i:i + threads] for i in range(0, len(forms), threads)]
@@ -1912,14 +1909,27 @@ def print_info(message):
 
 
 
+def add_http_if_missing(website):
+    if not website.startswith("http://") and not website.startswith("https://"):
+        website = "http://" + website
+    return website
+
 def load_websites_from_file(file_path):
     try:
         with open(file_path, 'r') as file:
-            websites = file.read().splitlines()
+            websites_data = file.read()
+        if file_path.lower().endswith('.json'):
+            websites = json.loads(websites_data)
+        else:
+            websites = websites_data.splitlines()
+
+        websites = [add_http_if_missing(website) for website in websites]
+
         return websites
     except FileNotFoundError:
-        print_error(f"File '{file_path}' not found.")
-        return []
+        raise FileNotFoundError("File not found. Please enter a valid file path.")
+    except Exception as e:
+        raise Exception(f"Error occurred while processing the file: {e}")
 
 def get_target_url():
     target_url = input("Enter the target URL to scan for vulnerabilities: ")
@@ -1994,7 +2004,7 @@ def main():
                 if user_choice in ["yes", "no"]:
                     break
                 else:
-                    print_error("Invalid input. Please enter 'yes' or 'no'.")
+                    print("Invalid input. Please enter 'yes' or 'no'.")
 
             if user_choice == "yes":
                 while True:
@@ -2002,21 +2012,21 @@ def main():
                     try:
                         headers, cookies = read_headers_and_cookies(request_file)
                         if headers is None or cookies is None:
-                            continue  
-                        session = create_session(cookies=cookies)  
+                            continue
+                        session = create_session(cookies=cookies)
                         break
                     except Exception as e:
-                        print_error(f"Error occurred while processing the request file: {e}")
+                        print(f"Error occurred while processing the request file: {e}")
             else:
                 session = create_session()
 
             try:
-                print_info("Collecting URLs from the target website...")
+                print("Collecting URLs from the target website...")
                 urls = collect_urls(target_url)
 
                 print(f"Found {len(urls)} URLs to scan.")
 
-                print_info("Scanning collected URLs for vulnerabilities...")
+                print("Scanning collected URLs for vulnerabilities...")
                 vulnerable_urls = set()
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -2024,65 +2034,64 @@ def main():
                     for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Scanning Website", unit="URL"):
                         try:
                             future.result()
-                        except Exception as e:
-                            print_error(f"Error occurred while scanning URL: {e}")
+                        except Exception:
+                            pass
 
-                print_info("Scanning completed!")
+                print("Scanning completed!")
 
                 save_vulnerable_urls(vulnerable_urls)
-                print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+                print("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
                 break
 
             except Exception as e:
-                print_error(f"Error occurred during the scan process: {e}")
+                print(f"Error occurred during the scan process: {e}")
 
         elif user_choice == "2":
             while True:
                 file_path = input("Enter the path of the txt or JSON file containing the list of websites: ")
                 try:
-                    with open(file_path, 'r') as file:
-                        websites_data = file.read()
-                    if file_path.lower().endswith('.json'):
-                        websites = json.loads(websites_data)
-                    else:
-                        websites = websites_data.splitlines()
+                    websites = load_websites_from_file(file_path)
                     break
-                except FileNotFoundError:
-                    print_error("File not found. Please enter a valid file path.")
+                except FileNotFoundError as e:
+                    print(e)
                 except Exception as e:
-                    print_error(f"Error occurred while processing the file: {e}")
+                    print(f"Error occurred while loading websites from the file: {e}")
 
             if not websites:
-                print_error("No websites loaded from the file.")
+                print("No websites loaded from the file.")
                 continue
 
             try:
-                print_info(f"Loaded {len(websites)} websites from the file.")
+                print(f"Loaded {len(websites)} websites from the file.")
 
-                print_info("Scanning websites from the file...")
+                print("Scanning websites from the file...")
                 vulnerable_urls = set()
 
                 with concurrent.futures.ThreadPoolExecutor() as executor:
-                    futures = [executor.submit(collect_urls, website) for website in websites]
+                    futures = []
+                    for website in websites:
+                        future = executor.submit(collect_urls, website)
+                        futures.append(future)
+
                     for future in tqdm(concurrent.futures.as_completed(futures), total=len(futures), desc="Scanning Websites", unit="Website"):
                         try:
                             urls = future.result()
                             for url in urls:
                                 executor.submit(scan_and_inject_payloads, url, [], vulnerable_urls)
-                        except Exception as e:
-                            print_error(f"Error occurred while scanning website: {e}")
+                        except Exception:
+                            pass
 
-                print_info("Scanning completed!")
+                print("Scanning completed!")
 
                 save_vulnerable_urls(vulnerable_urls)
-                print_info("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
+                print("Vulnerable URLs saved to 'vulnerable_urls.txt'.")
                 break
 
             except Exception as e:
-                print_error(f"Error occurred during the scan process: {e}")
+                print(f"Error occurred during the scan process: {e}")
 
         else:
-            print_error("Invalid choice. Please choose option 1 or 2.")
+            print("Invalid choice. Please choose option 1 or 2.")
 
 if __name__ == "__main__":
     main()
