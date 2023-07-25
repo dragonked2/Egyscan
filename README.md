@@ -152,3 +152,28 @@ EgyScan V2.0 was developed by [AliElTop].
 
 [![Sponsor](https://img.shields.io/badge/sponsor-project_name-orange.svg)](https://github.com/sponsors/dragonked2)
 [![Star](https://img.shields.io/badge/star-project_name-yellow.svg)](https://github.com/dragonked2/Egyscan)
+
+   ```shell
+   Meta Tags :)
+how to secure website from hackers in php
+how to protect your website from hackers
+how to protect website from hackers and viruses
+how to protect your website from threats
+how to secure your website for free
+how to protect wordpress website from hackers
+how to prevent website attacks
+how to secure your account from hackers
+Simple Ways To Protect Your Website From Attackers
+The best way to protect them is to find vulnerabilities using a specialized scanner and eliminate them. You can also temporarily band-aid
+What all methods can you use to avoid vulnerabilities in a website?
+What type of security do you have in place to protect websites?
+How are websites protected?
+How can I make my website secure?
+Effective Ways To Protect Your Website From Attackers
+How to Protect Website From Hackers and Secure It
+How to Secure a Website & Protect It from Hackers
+How To Make Your Website More Secure In 2023
+The 10 Most Common Website Security Attacks
+Website Security & Protection: How to Secure a Website
+8 Simple Ways to Improve your Website Security
+   ```
