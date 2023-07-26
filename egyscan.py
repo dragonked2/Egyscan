@@ -370,7 +370,6 @@ def check_rce(url):
 
         rce_patterns = [
             r"(?i)root:",
-            r"(?i)49",
             r"(?i)shadow",
             r"(?i)cmd",
 
