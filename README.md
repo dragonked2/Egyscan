@@ -1,179 +1,113 @@
-# EgyScan V2.0
+# EgyScan V2.0 - Fortify Your Web Fortress 🛡️
 
-[![GitHub License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Github License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![GPLv3 License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
+[![Python 3.x](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
 
 <p align="center">
   <img src="https://github.com/dragonked2/Egyscan/assets/66541902/c769777f-7e6a-4d1f-8907-bb4e75c8d01e" alt="EgyScan Logo">
 </p>
 
-## Protect Your Website from Vulnerabilities with EgyScan
+## 🚀 Safeguard Your Website with EgyScan
 
-EgyScan is an advanced vulnerability scanning tool designed to identify potential security risks in your website. Our comprehensive scanning capabilities help you address key vulnerabilities, ensuring the protection of your valuable data.
+EgyScan emerges as the ultimate sentinel, standing guard against the lurking vulnerabilities that threaten your website's integrity. Embark on a journey of comprehensive security with EgyScan, your trusted ally in the digital realm.
 
-## Key Features
+## 🔑 Key Features
 
-- **Thorough Scanning**: EgyScan performs a wide range of checks to identify common vulnerabilities, including:
-  
+EgyScan, the sentinel of the web, goes above and beyond to uncover and neutralize a plethora of vulnerabilities, including:
+
+- 🛡️ **Impermeable Defense**: EgyScan conducts an extensive array of security checks, including, but not limited to:
+
   - SQL Injection
   - Remote Code Execution
   - Cross-Site Scripting (XSS)
   - Local File Inclusion (LFI)
   - Open Redirect
-  - Backup Files
-  - Database Exposure
-  - Directory Listings
-  - Sensitive Information Exposure
-  - XML External Entity (XXE) Injection
-  - Server-Side Request Forgery (SSRF)
-  - Remote File Inclusion (RFI)
-  - Log File Disclosure
-  - Insecure Direct Object Reference (IDOR)
-  - Cross-Origin Resource Sharing (CORS)
-  - Cross-Site Request Forgery (CSRF)
-  - Command Injection
-  - File Upload Vulnerabilities
-  - Authentication Bypass
-  - Insecure Configuration
-  - Server Misconfiguration
-  - Injection Flaws
-  - Weak Session Management
-  - Clickjacking
-  - Host Header Injection
-  - Remote File Execution
-  - Brute Force Attacks
-  - Security Misconfiguration
-  - Missing Authentication
-  - CRLF Injection
-  - Session Fixation
-  - Unvalidated Redirects
-  - Command Execution
-  - Cross-Site Tracing
-  - Server-Side Template Injection
-  - File Inclusion
-  - Privilege Escalation
-  - XML Injection
-  - Weak Cryptography
-  - Deserialization Vulnerabilities
-  - Server-Side Request Forgery (SSRF)
-  
-- **URL Collection**: EgyScan collects URLs from your target website by crawling web pages and extracting links.
+  - 26+ Exploits
+  - And a formidable battalion of others…
 
-- **Payload Injection**: The tool injects payloads into parameters, query strings, and form inputs of the collected URLs to test for vulnerabilities.
+- 🌐 **Web Cartography**: EgyScan's adept crawler navigates the expanses of your website, amassing URLs and forging a map of its intricacies.
 
-- **Multithreading**: EgyScan utilizes a thread pool to parallelize scanning and payload injection processes, enhancing performance.
+- 💉 **Payload Infusion**: EgyScan injects potent payloads into parameters, query strings, and forms, exposing chinks in the armor for vulnerabilities to be revealed.
 
-- **User-Agent Randomization**: The tool randomly selects a User-Agent header from a predefined list for each HTTP request, aiding in bypassing certain security measures.
+- 🌀 **Multithreaded Valor**: EgyScan rallies an army of threads, executing scans and infusions in synchronized harmony, culminating in unmatched performance.
 
-- **Logging and Output**: EgyScan logs scanning results with different log levels (INFO, WARNING, ERROR) and provides colorful output for improved readability.
+- 🎭 **Camouflaged Identity**: With an arsenal of User-Agent headers, EgyScan shrouds itself in different personas with each request, adeptly slipping past guardians of the digital realm.
 
-Don't leave your website vulnerable to threats. Contact us today to fortify your defenses and ensure the security of your valuable data!
-![image](https://github.com/dragonked2/Egyscan/assets/66541902/02de4e3a-d571-4d90-afad-e9966e44057e)
+- 📊 **Visual Chronicles**: EgyScan diligently logs its conquests, transcribing findings in vivid hues and distinct levels of urgency for clarity and insight.
 
-## Requirements
+## 🌐 Installation Odyssey
 
-- Python 3.x
-- requests library
-- bs4 (BeautifulSoup) library
-- colorama library
-- tqdm library
-- aiohttp
+Embark on a swift installation quest:
 
-## Installation
-
-1. Clone the repository:
+1. Unveil the repository:
 
    ```shell
    git clone https://github.com/dragonked2/Egyscan.git
    ```
 
-2. Install the required dependencies:
+2. Conjure the arcane dependencies:
 
    ```shell
    pip install -r requirements.txt
    ```
 
-## Usage
+## 🏹 Deployment Ritual
 
-1. Run the tool:
+1. Unleash the power:
 
    ```shell
    python egy.py
    ```
 
-2. Enter the target URL to scan for vulnerabilities.
+2. Cast your target into the fray and witness the sentinel's scrutiny unfold.
 
-## Disclaimer
+## ⚠️ A Pact of Responsibility
 
-This tool is intended for educational purposes only. Use it responsibly and only on websites that you have permission to test.
+EgyScan is a paragon of knowledge, forged for educational purposes. Wield it with caution, restricting its dominion to websites of consent.
 
-## License
+## 📜 The Code Oath
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+EgyScan swears allegiance to the MIT License. Delve into the [LICENSE](LICENSE) scroll for the sacred words.
 
-## Contributions
+## 🌟 Contributions Constellation
 
-Contributions to improve and enhance the tool are welcome. Feel free to submit issues and pull requests.
+Embrace the call of enhancement. Contribute your talents, bestow issues and pull requests, and illuminate EgyScan's path.
 
-## Acknowledgments
+## 🙏 A Gratitude Mosaic
 
-EgyScan V2.0 was developed by [AliElTop].
+EgyScan V2.0 stands as a testament to the artistry of [AliElTop], a maestro in the world of code.
 
+> 🏷️ #EgyScan #VulnerabilityVigilante #DigitalBastion #WebGuardian #CyberSentinel #URLAlchemy
+> #PayloadPioneer #ParallelProwess #AgentChameleon #ColorfulChronicles #WebMage #DefenderOfTheData
+> #CyberKnight #SecureScribe #DigitalCrusader #GuardianOfTheGateway #VulnerabilityVirtuoso #WebWarder
+> #CodeConductor #SafetySculptor #DataGuardian #CyberCustodian #ElevatePerformance #WebWarden
+> #DigitalDefender
 
-
-    Hash Tag
-    #EgyScan
-    #VulnerabilityScanner
-    #WebSecurity
-    #WebsiteProtection
-    #CyberSecurityTool
-    #URLCollection
-    #PayloadInjection
-    #Multithreading
-    #UserAgentRandomization
-    #LoggingAndOutput
-    #WebVulnerabilities
-    #WebsiteSafety
-    #DataProtection
-    #CyberDefense
-    #CyberSafety
-    #SecureYourWebsite
-    #WebsiteRiskAssessment
-    #SecurityMeasures
-    #WebsiteSafetyScan
-    #SecureYourData
-    #WebsiteSecurityTool
-    #EnhancePerformance
-    #ProtectYourWebsite
-    #WebApplicationSecurity
-    #StayProtected
 ---
 
-[![Sponsor](https://img.shields.io/badge/sponsor-project_name-orange.svg)](https://github.com/sponsors/dragonked2)
-[![Star](https://img.shields.io/badge/star-project_name-yellow.svg)](https://github.com/dragonked2/Egyscan)
+[![Sponsor](https://img.shields.io/badge/sponsor-Egyscan-orange.svg)](https://github.com/sponsors/dragonked2)
+[![Star](https://img.shields.io/badge/star-Egyscan-yellow.svg)](https://github.com/dragonked2/Egyscan)
 
    ```shell
    Meta Tags :)
-how to secure website from hackers in php
-how to protect your website from hackers
-how to protect website from hackers and viruses
-how to protect your website from threats
-how to secure your website for free
-how to protect wordpress website from hackers
-how to prevent website attacks
-how to secure your account from hackers
-Simple Ways To Protect Your Website From Attackers
-The best way to protect them is to find vulnerabilities using a specialized scanner and eliminate them. You can also temporarily band-aid
-What all methods can you use to avoid vulnerabilities in a website?
-What type of security do you have in place to protect websites?
-How are websites protected?
-How can I make my website secure?
-Effective Ways To Protect Your Website From Attackers
-How to Protect Website From Hackers and Secure It
-How to Secure a Website & Protect It from Hackers
-How To Make Your Website More Secure In 2023
-The 10 Most Common Website Security Attacks
-Website Security & Protection: How to Secure a Website
-8 Simple Ways to Improve your Website Security
+Your website's fortress - EgyScan V2.0
+Guardians of the web - EgyScan
+Safeguarding websites with EgyScan
+EgyScan: Your Digital Guardian
+Uncover vulnerabilities with EgyScan
+Defend your website with EgyScan
+EgyScan - Shielding Your Digital Citadel
+EgyScan: Your Ultimate Web Guardian
+EgyScan - Master of Vulnerability Detection
+Protect and conquer with EgyScan
+EgyScan - Your Weapon Against Threats
+Web Security with EgyScan V2.0
+Unlock the power of EgyScan
+EgyScan: Fortifying Your Web Presence
+EgyScan: Your Shield Against Cyber Threats
+EgyScan - The Guardian of Your Digital Domain
+Strengthen your website with EgyScan
+EgyScan: A Journey of Security and Protection
+EgyScan: Safeguarding the Digital Frontier
    ```
