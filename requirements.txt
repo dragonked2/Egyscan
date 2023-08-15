@@ -1,7 +1,28 @@
-beautifulsoup4==4.9.3
-colorama==0.4.4
-requests==2.26.0
-tqdm==4.62.0
-ratelimit
+# Core Dependencies
+logging
+tqdm
+random
+re
+signal
+requests
+sys
+os
+concurrent.futures
+threading
+asyncio
+ssl
+traceback
+functools
+
+# Web-related Dependencies
+urllib3
 aiohttp
 defusedxml
+beautifulsoup4
+urllib3
+requests
+colorama
+bs4
+
+# Additional Dependencies
+colorama
