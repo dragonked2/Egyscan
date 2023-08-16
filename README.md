@@ -1,5 +1,5 @@
 # EgyScan V2.0 - Fortify Your Web Fortress 🛡️
-
+[![GitHub stars](https://img.shields.io/github/stars/dragonked2/Egyscan)](https://github.com/dragonked2/Egyscan/stargazers)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![GPLv3 License](https://img.shields.io/badge/license-GPLv3-blue.svg)](LICENSE)
 [![Python 3.x](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/downloads/)
