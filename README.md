@@ -111,4 +111,3 @@ Strengthen your website with EgyScan
 EgyScan: A Journey of Security and Protection
 EgyScan: Safeguarding the Digital Frontier
    ```
-[Image](156.223.9.145)
