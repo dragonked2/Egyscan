@@ -4,7 +4,7 @@ Greetings, Guardians of the Virtual Frontier,
 <br>
 Egyscan Family Counter 
 
-<div align="center">
+<div align="left">
   <img src="https://profile-counter.glitch.me/dragonked2/count.svg?"  />
 </div>
 
