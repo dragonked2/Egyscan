@@ -8,6 +8,10 @@ Egyscan Family Counter
   <img src="https://profile-counter.glitch.me/dragonked2/count.svg?"  />
 </div>
 
+<br>
+
+[![Group](https://img.shields.io/badge/Group-FaceBook-1.svg)](https://www.facebook.com/groups/egyscan/)
+
 Prepare to be astonished by the extraordinary might of **EgyScan V2.0**, the ultimate sentinel that transforms your websites into impregnable fortresses against the relentless tides of cyber threats. Embark on a journey into the future of digital defense, as EgyScan emerges as the unstoppable force safeguarding your online dominion.
 
 ### 🚀 Unleash Unrivaled Power with EgyScan 🚀
