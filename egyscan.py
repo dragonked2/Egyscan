@@ -2130,47 +2130,47 @@ def make_request(url, data=None, method="GET", headers=None):
         return None
 
 
-def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=10):
-    def inject_payloads(form, payloads):
+def scan_for_vulnerabilities(url, payloads, headers=None, threads=10):
+    def inject_payloads(form):
         form_action = form.get("action")
-        if form_action:
-            if not form_action.startswith("http"):
-                form_action = urljoin(base_url, form_action)
-            form_inputs = form.find_all(["input", "textarea"])
-            form_data = {
-                input_field.get("name"): input_field.get("value")
-                for input_field in form_inputs
-            }
+        if not form_action:
+            return
 
-            if tokens:
-                form_data.update(tokens)
+        if not form_action.startswith("http"):
+            form_action = urljoin(base_url, form_action)
 
-            for param, param_values in form_data.items():
-                for param_value in param_values:
-                    for payload in payloads:
-                        injected_form_data = form_data.copy()
-                        injected_form_data[param] = param_value + payload
+        form_inputs = form.find_all(["input", "textarea"])
+        form_data = {
+            input_field.get("name"): input_field.get("value")
+            for input_field in form_inputs
+        }
 
-                        injected_form = BeautifulSoup("", "html.parser")
-                        injected_form.name = "form"
-                        injected_form["action"] = form_action
-                        injected_form["method"] = form.get("method", "post")
+        for param, param_values in form_data.items():
+            for param_value in param_values:
+                for payload in payloads:
+                    injected_form_data = form_data.copy()
+                    injected_form_data[param] = param_value + payload
 
-                        for field_name, field_value in injected_form_data.items():
-                            input_tag = injected_form.new_tag("input")
-                            input_tag["type"] = "hidden"
-                            input_tag["name"] = field_name
-                            input_tag["value"] = field_value
-                            injected_form.append(input_tag)
+                    injected_form = BeautifulSoup("", "html.parser")
+                    injected_form.name = "form"
+                    injected_form["action"] = form_action
+                    injected_form["method"] = form.get("method", "post")
 
-                        injected_url = injected_form["action"]
-                        response = make_request(
-                            injected_url,
-                            data=injected_form.encode(),
-                            method=injected_form["method"],
-                        )
-                        if response:
-                            scan_response(response)
+                    for field_name, field_value in injected_form_data.items():
+                        input_tag = injected_form.new_tag("input")
+                        input_tag["type"] = "hidden"
+                        input_tag["name"] = field_name
+                        input_tag["value"] = field_value
+                        injected_form.append(input_tag)
+
+                    injected_url = injected_form["action"]
+                    response = make_request(
+                        injected_url,
+                        data=injected_form.encode(),
+                        method=injected_form["method"],
+                    )
+                    if response:
+                        scan_response(response)
 
     def scan_response(response):
         for check_func, vulnerability_type in vulnerability_checks.items():
@@ -2181,9 +2181,9 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
         for waf_name, waf_signatures in common_wafs.items():
             for signature in waf_signatures:
                 if signature.lower() in response.headers.get("Server", "").lower():
-                    detected_wafs.append(waf_name)
+                    detected_wafs.add(waf_name)
 
-    def inject_payloads_into_params(url, payloads):
+    def inject_payloads_into_params(url):
         parsed_url = urlparse(url)
         query_parameters = parse_qs(parsed_url.query)
 
@@ -2200,22 +2200,29 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
                     if response:
                         scan_response(response)
 
+    def make_request(url, data=None, method="get"):
+        try:
+            if method.lower() == "post":
+                response = requests.post(url, data=data, headers=headers)
+            else:
+                response = requests.get(url, headers=headers)
+            return response
+        except Exception as e:
+            return None
+
     parsed_url = urlparse(url)
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
-    params = parse_qs(parsed_url.query)
     vulnerable_urls = set()
-    detected_wafs = []
+    detected_wafs = set()
 
-    response = make_request(url, headers=headers)
+    response = make_request(url)
     if response:
         scan_response(response)
 
-    inject_payloads_into_params(url, payloads)
+    inject_payloads_into_params(url)
 
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
-
-    form_chunks = [forms[i : i + threads] for i in range(0, len(forms), threads)]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         executor.map(inject_payloads, forms)
@@ -2226,7 +2233,6 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
             print(f"- {waf}")
 
     return vulnerable_urls
-
 
 vulnerability_checks = {
     check_sqli: "SQL Injection\n",
