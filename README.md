@@ -1,4 +1,4 @@
-## 🛡️ EgyScan V2.0: The Digital Citadel of Invincibility 🛡️
+## 🛡️ EgyScan V3.0: The Digital Citadel of Invincibility 🛡️
 
 Greetings, Guardians of the Virtual Frontier,
 <br>
@@ -12,7 +12,7 @@ Egyscan Family Counter
 
 [![Group](https://img.shields.io/badge/Group-FaceBook-1.svg)](https://www.facebook.com/groups/egyscan/)
 
-Prepare to be astonished by the extraordinary might of **EgyScan V2.0**, the ultimate sentinel that transforms your websites into impregnable fortresses against the relentless tides of cyber threats. Embark on a journey into the future of digital defense, as EgyScan emerges as the unstoppable force safeguarding your online dominion.
+Prepare to be astonished by the extraordinary might of **EgyScan V3.0**, the ultimate sentinel that transforms your websites into impregnable fortresses against the relentless tides of cyber threats. Embark on a journey into the future of digital defense, as EgyScan emerges as the unstoppable force safeguarding your online dominion.
 
 ### 🚀 Unleash Unrivaled Power with EgyScan 🚀
 
