@@ -16,7 +16,8 @@ Prepare to be astonished by the extraordinary might of **EgyScan V3.0**, the ult
 
 ### 🚀 Unleash Unrivaled Power with EgyScan 🚀
 
-![EgyScan Logo](https://github.com/dragonked2/Egyscan/assets/66541902/c769777f-7e6a-4d1f-8907-bb4e75c8d01e)
+![image](https://github.com/dragonked2/Egyscan/assets/66541902/5b311df4-6250-4485-939c-cf4b97a3d4c4)
+
 
 **EgyScan** isn't just a tool; it's the guardian angel of your digital existence. It scans, probes, and secures like no other:
 
