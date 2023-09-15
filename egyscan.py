@@ -26,7 +26,42 @@ from urllib.robotparser import RobotFileParser
 from bs4 import MarkupResemblesLocatorWarning
 
 
-init(autoreset=True)
+def get_target_url():
+    while True:
+        user_input = input(
+            "Enter the target URL (e.g., https://example.com or naruto-arena.net): "
+        )
+
+        if not re.match(r"https?://", user_input):
+            user_input = "http://" + user_input
+
+        try:
+            response = requests.get(user_input)
+            response.raise_for_status()
+            return user_input
+        except requests.exceptions.MissingSchema:
+            print(
+                "Invalid URL format. Make sure to include 'http://' or 'https://'."
+                " Please try again."
+            )
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 403:
+                print(
+                    f"Access to the URL is forbidden (HTTP 403 Forbidden): {user_input}"
+                )
+            else:
+                print(
+                    f"HTTP error {response.status_code} occurred while connecting to"
+                    f" the URL: {e}"
+                )
+        except requests.exceptions.RequestException as e:
+            print(f"Unable to connect to the URL: {e}")
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+            init(autoreset=True)
+
+
 payloads = [
     "<script>alert('AliElTop')</script>",
     ";phpinfo()",
@@ -1970,7 +2005,7 @@ session.mount("https://", adapter)
 response_cache = {}
 
 
-def get_response(url):
+def get_response(url, response_cache):
     if url in response_cache:
         return response_cache[url]
     else:
@@ -1979,7 +2014,7 @@ def get_response(url):
         return response
 
 
-def get_url_status(url):
+def get_url_status(url, session):
     response = session.head(url)
     return response.status_code
 
@@ -1988,9 +2023,9 @@ def collect_urls(target_url, max_urls=500, num_threads=10, session=None):
     parsed_target_url = urlparse(target_url)
     target_domain = parsed_target_url.netloc
 
-    urls = set()
+    urls_to_process = set()
     processed_urls = set()
-    urls.add(target_url)
+    urls_to_process.add(target_url)
     urls_collected = 0
 
     def extract_urls_from_html(html, base_url):
@@ -2002,7 +2037,7 @@ def collect_urls(target_url, max_urls=500, num_threads=10, session=None):
             extracted_urls.add(absolute_url)
         return extracted_urls
 
-    def filter_urls(urls, target_domain, processed_urls):
+    def filter_urls_for_domain(urls, target_domain, processed_urls):
         filtered_urls = set()
         for url in urls:
             parsed_url = urlparse(url)
@@ -2013,17 +2048,15 @@ def collect_urls(target_url, max_urls=500, num_threads=10, session=None):
         return filtered_urls
 
     def process_url(current_url):
-        nonlocal urls, processed_urls, urls_collected
+        nonlocal urls_to_process, processed_urls, urls_collected
         try:
             if current_url.startswith("javascript:"):
                 return set()
 
-            response = (
-                session.get(current_url) if session else requests.get(current_url)
-            )
+            response = get_response(current_url, response_cache)
             if response.status_code == 200:
                 extracted_urls = extract_urls_from_html(response.text, current_url)
-                filtered_urls = filter_urls(
+                filtered_urls = filter_urls_for_domain(
                     extracted_urls, target_domain, processed_urls
                 )
 
@@ -2031,7 +2064,7 @@ def collect_urls(target_url, max_urls=500, num_threads=10, session=None):
                     processed_urls.update(filtered_urls)
 
                 with urls_lock:
-                    urls.update(filtered_urls)
+                    urls_to_process.update(filtered_urls)
 
                 urls_collected += 1
                 if urls_collected >= max_urls:
@@ -2044,7 +2077,7 @@ def collect_urls(target_url, max_urls=500, num_threads=10, session=None):
         return set()
 
     with tqdm.tqdm(
-        total=len(urls),
+        total=len(urls_to_process),
         desc="Collecting URLs",
         bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt}",
     ) as pbar:
@@ -2053,21 +2086,21 @@ def collect_urls(target_url, max_urls=500, num_threads=10, session=None):
         task_queue = []
 
         with ThreadPoolExecutor(max_workers=num_threads) as executor:
-            while urls:
-                current_urls = list(urls)
-                urls.clear()
+            while urls_to_process:
+                current_urls = list(urls_to_process)
+                urls_to_process.clear()
                 task_queue.extend(current_urls)
 
                 results = list(executor.map(process_url, task_queue))
                 task_queue.clear()
 
-                pbar.total = len(urls) + len(processed_urls)
+                pbar.total = len(urls_to_process) + len(processed_urls)
                 pbar.update(len(current_urls))
 
                 if urls_collected >= max_urls:
-                    break  # Stop collecting when the maximum limit is reached
+                    break
 
-        return processed_urls
+    return processed_urls
 
 
 detected_wafs = []
@@ -2130,47 +2163,47 @@ def make_request(url, data=None, method="GET", headers=None):
         return None
 
 
-def scan_for_vulnerabilities(url, payloads, headers=None, threads=10):
+def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=10):
     def inject_payloads(form):
         form_action = form.get("action")
-        if not form_action:
-            return
+        if form_action:
+            if not form_action.startswith("http"):
+                form_action = urljoin(base_url, form_action)
+            form_inputs = form.find_all(["input", "textarea"])
+            form_data = {
+                input_field.get("name"): input_field.get("value")
+                for input_field in form_inputs
+            }
 
-        if not form_action.startswith("http"):
-            form_action = urljoin(base_url, form_action)
+            if tokens:
+                form_data.update(tokens)
 
-        form_inputs = form.find_all(["input", "textarea"])
-        form_data = {
-            input_field.get("name"): input_field.get("value")
-            for input_field in form_inputs
-        }
+            for param, param_values in form_data.items():
+                for param_value in param_values:
+                    for payload in payloads:
+                        injected_form_data = form_data.copy()
+                        injected_form_data[param] = param_value + payload
 
-        for param, param_values in form_data.items():
-            for param_value in param_values:
-                for payload in payloads:
-                    injected_form_data = form_data.copy()
-                    injected_form_data[param] = param_value + payload
+                        injected_form = BeautifulSoup("", "html.parser")
+                        injected_form.name = "form"
+                        injected_form["action"] = form_action
+                        injected_form["method"] = form.get("method", "post")
 
-                    injected_form = BeautifulSoup("", "html.parser")
-                    injected_form.name = "form"
-                    injected_form["action"] = form_action
-                    injected_form["method"] = form.get("method", "post")
+                        for field_name, field_value in injected_form_data.items():
+                            input_tag = injected_form.new_tag("input")
+                            input_tag["type"] = "hidden"
+                            input_tag["name"] = field_name
+                            input_tag["value"] = field_value
+                            injected_form.append(input_tag)
 
-                    for field_name, field_value in injected_form_data.items():
-                        input_tag = injected_form.new_tag("input")
-                        input_tag["type"] = "hidden"
-                        input_tag["name"] = field_name
-                        input_tag["value"] = field_value
-                        injected_form.append(input_tag)
-
-                    injected_url = injected_form["action"]
-                    response = make_request(
-                        injected_url,
-                        data=injected_form.encode(),
-                        method=injected_form["method"],
-                    )
-                    if response:
-                        scan_response(response)
+                        injected_url = injected_form["action"]
+                        response = make_request(
+                            injected_url,
+                            data=injected_form.encode(),
+                            method=injected_form["method"],
+                        )
+                        if response:
+                            scan_response(response)
 
     def scan_response(response):
         for check_func, vulnerability_type in vulnerability_checks.items():
@@ -2181,7 +2214,7 @@ def scan_for_vulnerabilities(url, payloads, headers=None, threads=10):
         for waf_name, waf_signatures in common_wafs.items():
             for signature in waf_signatures:
                 if signature.lower() in response.headers.get("Server", "").lower():
-                    detected_wafs.add(waf_name)
+                    detected_wafs.append(waf_name)
 
     def inject_payloads_into_params(url):
         parsed_url = urlparse(url)
@@ -2200,22 +2233,13 @@ def scan_for_vulnerabilities(url, payloads, headers=None, threads=10):
                     if response:
                         scan_response(response)
 
-    def make_request(url, data=None, method="get"):
-        try:
-            if method.lower() == "post":
-                response = requests.post(url, data=data, headers=headers)
-            else:
-                response = requests.get(url, headers=headers)
-            return response
-        except Exception as e:
-            return None
-
     parsed_url = urlparse(url)
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
+    params = parse_qs(parsed_url.query)
     vulnerable_urls = set()
-    detected_wafs = set()
+    detected_wafs = []
 
-    response = make_request(url)
+    response = make_request(url, headers=headers)
     if response:
         scan_response(response)
 
@@ -2223,6 +2247,8 @@ def scan_for_vulnerabilities(url, payloads, headers=None, threads=10):
 
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
+
+    form_chunks = [forms[i : i + threads] for i in range(0, len(forms), threads)]
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
         executor.map(inject_payloads, forms)
@@ -2233,6 +2259,7 @@ def scan_for_vulnerabilities(url, payloads, headers=None, threads=10):
             print(f"- {waf}")
 
     return vulnerable_urls
+
 
 vulnerability_checks = {
     check_sqli: "SQL Injection\n",
@@ -2330,25 +2357,6 @@ def create_session(cookies=None):
     return session
 
 
-def get_target_url():
-    while True:
-        user_input = input(
-            "Enter the target URL(e.g., https://example.com or 127.0.0.1:5400): "
-        )
-
-        if not user_input.startswith(("http://", "https://")):
-            user_input = "http://" + user_input
-
-        try:
-            response = requests.get(user_input)
-            response.raise_for_status()
-        except requests.exceptions.RequestException:
-            print_error("Invalid URL or unable to connect. Please try again.")
-            continue
-
-        return user_input
-
-
 def main():
     print_logo()
 
@@ -2360,35 +2368,33 @@ def main():
 
         if user_choice == "1":
             target_url = get_target_url()
+            scan_user_dashboard = input(
+                "Do you want to scan inside the user dashboard? (yes/no): "
+            ).lower()
 
-            while True:
-                user_choice = input(
-                    "Do you want to scan inside the user dashboard? (yes/no): "
-                ).lower()
-                if user_choice in ["yes", "no"]:
-                    break
-                else:
-                    print_error("Invalid input. Please enter 'yes' or 'no'.")
+            if scan_user_dashboard not in ["yes", "no"]:
+                print_error("Invalid input. Please enter 'yes' or 'no'.")
+                continue
 
-            if user_choice == "yes":
-                while True:
-                    request_file = input(
-                        "Please enter the path or name of the request file: "
+            if scan_user_dashboard == "yes":
+                request_file = input(
+                    "Please enter the path or name of the request file: "
+                )
+                try:
+                    with open(request_file, "r") as file:
+                        request_content = file.read()
+                    headers, body = request_content.split("\n\n", 1)
+                    cookies = headers.split("Cookie: ")[1].strip()
+                    headers = headers.split("\n")[1:]
+                    session = create_session(cookies)
+                except FileNotFoundError:
+                    print_error("File not found. Please enter a valid file path.")
+                    continue
+                except Exception as e:
+                    print_error(
+                        f"Error occurred while processing the request file: {e}"
                     )
-                    try:
-                        with open(request_file, "r") as file:
-                            request_content = file.read()
-                        headers, body = request_content.split("\n\n", 1)
-                        cookies = headers.split("Cookie: ")[1].strip()
-                        headers = headers.split("\n")[1:]
-                        session = create_session(cookies)
-                        break
-                    except FileNotFoundError:
-                        print_error("File not found. Please enter a valid file path.")
-                    except Exception as e:
-                        print_error(
-                            f"Error occurred while processing the request file: {e}"
-                        )
+                    continue
             else:
                 session = create_session()
 
