@@ -53,6 +53,56 @@ EgyScan is not just a tool; it's a beacon of ethical brilliance, designed for ed
 EgyScan proudly rallies under the banner of the MIT License. Dive into the depths of the [LICENSE](LICENSE) scroll to uncover the terms of this noble allegiance.
 
 Join the League of Defenders, where your insights influence EgyScan's evolution. Pledge your allegiance through issues and pull requests, and together, we'll redefine digital security.
+## Comprehensive Vulnerability Checks 🛡️
+
+EgyScan V3.0 is equipped with a formidable arsenal of vulnerability checks to ensure the fortification of your digital citadel. Here's a glimpse of what it can detect:
+
+- **SQL Injection (SQLi)**: Unearths vulnerabilities that could allow malicious SQL queries.
+- **Remote Code Execution (RCE)**: Guards against unauthorized execution of code on your server.
+- **Cross-Site Scripting (XSS)**: Shields against the injection of malicious scripts into web pages.
+- **Local File Inclusion (LFI)**: Protects your server from unauthorized access to local files.
+- **Open Redirect**: Detects and neutralizes open redirect vulnerabilities.
+- **Backup Files**: Guards against exposure of sensitive backup files.
+- **Database Exposure**: Protects sensitive database information from unauthorized access.
+- **Directory Listings**: Prevents exposure of directory listings.
+- **Sensitive Information**: Safeguards sensitive data from being leaked.
+- **XML External Entity Injection (XXE)**: Detects and mitigates XML external entity injection.
+- **Server-Side Request Forgery (SSRF)**: Protects against SSRF attacks.
+- **Remote File Inclusion (RFI)**: Guards against unauthorized inclusion of remote files.
+- **Log File Disclosure**: Shields against disclosure of sensitive log files.
+- **Insecure Direct Object Reference (IDOR)**: Detects and mitigates IDOR vulnerabilities.
+- **Cross-Origin Resource Sharing (CORS)**: Ensures secure cross-origin resource sharing.
+- **Cross-Site Request Forgery (CSRF)**: Guards against CSRF attacks.
+- **Command Injection**: Detects and mitigates command injection vulnerabilities.
+- **File Upload Vulnerabilities**: Protects against security flaws in file upload mechanisms.
+- **Authentication Bypass**: Ensures robust authentication security.
+- **Insecure Configuration**: Detects and rectifies insecure configurations.
+- **Server Misconfiguration**: Guards against server configuration errors.
+- **Injection Flaws**: Detects various types of injection vulnerabilities.
+- **Weak Session Management**: Ensures robust session security.
+- **Clickjacking**: Shields against clickjacking attacks.
+- **Host Header Injection**: Protects against host header manipulation.
+- **Remote File Execution**: Detects and mitigates remote file execution vulnerabilities.
+- **Brute Force Attacks**: Guards against brute force attacks.
+- **Security Misconfiguration**: Detects and fixes security misconfigurations.
+- **Missing Authentication**: Ensures authentication is not bypassed.
+- **CRLF Injection**: Detects and mitigates CRLF injection vulnerabilities.
+- **Session Fixation**: Protects against session fixation attacks.
+- **Unvalidated Redirects**: Guards against unvalidated redirects.
+- **Command Execution**: Detects and mitigates command execution vulnerabilities.
+- **Cross-Site Tracing**: Ensures protection against cross-site tracing attacks.
+- **Server-Side Template Injection**: Detects and mitigates server-side template injection.
+- **File Inclusion**: Guards against file inclusion vulnerabilities.
+- **Privilege Escalation**: Ensures privilege escalation vulnerabilities are detected and patched.
+- **XML Injection**: Detects and mitigates XML injection vulnerabilities.
+- **Weak Cryptography**: Guards against vulnerabilities in cryptographic implementations.
+- **Deserialization Vulnerabilities**: Detects and mitigates deserialization vulnerabilities.
+- **Server-Side Request Forgery (SSRF)**: Protects against SSRF attacks.
+
+With EgyScan V3.0, you're armed with a robust toolset to fortify your digital defenses comprehensively.
+
+Remember, your digital fortress is only as strong as its weakest link. EgyScan's thorough vulnerability checks leave no stone unturned to secure your online kingdom.
+
 
 ### 🌟 Embrace the Invincibility 🌟
 
