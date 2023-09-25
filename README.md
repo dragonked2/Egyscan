@@ -45,7 +45,31 @@ Unleashing EgyScan's might is as simple as commanding a digital army:
    python egy.py
    ```
    Enter your target URL, and let EgyScan's spellbinding magic do the rest.
+   
+### ⚙️ Unleash the Citadel: Installation & Mastery For Virtual Enviroments⚙️
 
+
+1. **Summon the Codex:** Bring forth EgyScan's magic by invoking the sacred words:
+   ```shell
+   git clone https://github.com/dragonked2/Egyscan.git
+   ```
+   
+2. **Start the ritual:** Wake up EgyScan (The Forbidden One) by starting his ritual:
+   ```shell
+   python -m venv .venv
+   source .venv/bin/activate
+   ```
+   
+3. **Invoke the Elements:** With a digital flourish, conjure the dependencies:
+   ```shell
+   pip install -r virtualrequirements.txt
+   ```
+
+4. **Awaken the Guardian:** Initiate the ritual with:
+   ```shell
+   python egy.py
+   ```
+   Enter your target URL, and let EgyScan's spellbinding magic do the rest.
 ### 📜 Code of Noble Valor: Disclaimer, License & Joining Forces 📜
 
 EgyScan is not just a tool; it's a beacon of ethical brilliance, designed for educational empowerment. Wield its power ethically, casting its gaze only upon websites that have granted permission.
