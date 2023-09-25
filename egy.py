@@ -29,7 +29,7 @@ from bs4 import MarkupResemblesLocatorWarning
 def get_target_url():
     while True:
         user_input = input(
-            "Enter the target URL (e.g., https://example.com or naruto-arena.net): "
+            "Enter the target URL (e.g., https://example.com): "
         )
 
         if not re.match(r"https?://", user_input):
@@ -2328,7 +2328,7 @@ def print_info(message):
     print_colorful("[Info]" + message, Fore.MAGENTA)
 
 
-def load_websites_from_file(file_path):
+def collect_urls_from_file(file_path):
     try:
         with open(file_path, "r") as file:
             websites = file.read().splitlines()
