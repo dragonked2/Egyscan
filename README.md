@@ -70,6 +70,26 @@ Unleashing EgyScan's might is as simple as commanding a digital army:
    python egy.py
    ```
    Enter your target URL, and let EgyScan's spellbinding magic do the rest.
+   
+### ⚙️ Unleash the Citadel: Installation For Arch Linux Systems⚙️
+
+
+1. **Summon the Codex:** Bring forth EgyScan's magic by invoking the sacred words:
+   ```
+   https://aur.draggane.com/x86_64/egyscan-0.1-1-x86_64.pkg.tar.zst
+   ```
+   
+2. **Start the ritual:** Wake up EgyScan (The Forbidden One) by starting his ritual:
+   ```shell
+   sudo pacman -U egyscan-0.1-1-x86_64.pkg.tar.zst
+   ```
+   
+3. **Awaken the Guardian:** Initiate the ritual with:
+   ```shell
+   cd /usr/share/egyscan/Egyscan-Version3.1
+   source .venv/bin/activate
+   python egy.py
+   ```
 ### 📜 Code of Noble Valor: Disclaimer, License & Joining Forces 📜
 
 EgyScan is not just a tool; it's a beacon of ethical brilliance, designed for educational empowerment. Wield its power ethically, casting its gaze only upon websites that have granted permission.
@@ -146,7 +166,8 @@ Champion of Code,
 ---
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-dragonked2-orange.svg)](https://github.com/dragonked2)
-[![Star](https://img.shields.io/badge/Star-Egyscan-yellow.svg)](https://github.com/dragonked2/Egyscan)
+[![Star](https://img.shields.io/badge/Star-Egyscan-yellow.svg)](https://github.com/dragonked2/Egyscan) ![Arch Linux Badge](https://img.shields.io/badge/Arch%20Linux-1793D1?logo=archlinux&logoColor=fff&style=plastic)
+
 
 🔮 **Enter the Enigma:** 
 ```shell
