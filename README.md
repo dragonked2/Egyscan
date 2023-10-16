@@ -76,7 +76,7 @@ Unleashing EgyScan's might is as simple as commanding a digital army:
 
 1. **Summon the Codex:** Bring forth EgyScan's magic by invoking the sacred words:
    ```
-   https://aur.draggane.com/x86_64/egyscan-0.1-1-x86_64.pkg.tar.zst
+   https://aur.centauricorex.net/x86_64/egyscan-0.1-1-x86_64.pkg.tar.zst
    ```
    
 2. **Start the ritual:** Wake up EgyScan (The Forbidden One) by starting his ritual:
