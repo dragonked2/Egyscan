@@ -37,7 +37,8 @@ Unleashing EgyScan's might is as simple as commanding a digital army:
 
 2. **Invoke the Elements:** With a digital flourish, conjure the dependencies:
    ```shell
-   pip install logging aiohttp tqdm random re signal requests sys os concurrent.futures threading asyncio ssl traceback functools urllib3 aiohttp defusedxml beautifulsoup4 colorama bs4
+   pip install logging tqdm warnings random re urllib3 signal requests sys os concurrent.futures threading asyncio aiohttp ssl traceback defusedxml beautifulsoup4 colorama bs4
+
 
    ```
 
