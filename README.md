@@ -1,4 +1,4 @@
-## EgyScan V3.3: Your Digital Fort of Invincibility 🏰
+## EgyScan V3.3 "Ultra" : Your Digital Fort of Invincibility 🏰
 
 **Greetings, Guardians of the Digital Realm!** 🛡️
 
@@ -99,7 +99,7 @@ EgyScan proudly rallies under the banner of the MIT License. Dive into the depth
 Join the League of Defenders, where your insights influence EgyScan's evolution. Pledge your allegiance through issues and pull requests, and together, we'll redefine digital security.
 ## Comprehensive Vulnerability Checks 🛡️
 
-EgyScan V3.0 is equipped with a formidable arsenal of vulnerability checks to ensure the fortification of your digital citadel. Here's a glimpse of what it can detect:
+EgyScan V3.3 is equipped with a formidable arsenal of vulnerability checks to ensure the fortification of your digital citadel. Here's a glimpse of what it can detect:
 
 - **SQL Injection (SQLi)**: Unearths vulnerabilities that could allow malicious SQL queries.
 - **Remote Code Execution (RCE)**: Guards against unauthorized execution of code on your server.
@@ -150,7 +150,7 @@ Remember, your digital fortress is only as strong as its weakest link. EgyScan's
 
 ### 🌟 Embrace the Invincibility 🌟
 
-EgyScan V3.0 transcends technology; it's your indomitable ally, the guardian of your digital kingdom. Let its brilliance illuminate your path to unassailable digital security.
+EgyScan V3.3 transcends technology; it's your indomitable ally, the guardian of your digital kingdom. Let its brilliance illuminate your path to unassailable digital security.
 
 Summon your courage, unsheathe your digital sword, and venture into the realm of invincibility!
 
