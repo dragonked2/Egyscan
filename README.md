@@ -1,4 +1,4 @@
-## EgyScan V3.3 "Ultra" : Your Digital Fort of Invincibility 🏰
+## EgyScan V3.4 "Ultra" : Your Digital Fort of Invincibility 🏰
 
 **Greetings, Guardians of the Digital Realm!** 🛡️
 
@@ -99,7 +99,7 @@ EgyScan proudly rallies under the banner of the MIT License. Dive into the depth
 Join the League of Defenders, where your insights influence EgyScan's evolution. Pledge your allegiance through issues and pull requests, and together, we'll redefine digital security.
 ## Comprehensive Vulnerability Checks 🛡️
 
-EgyScan V3.3 is equipped with a formidable arsenal of vulnerability checks to ensure the fortification of your digital citadel. Here's a glimpse of what it can detect:
+EgyScan V3.4 is equipped with a formidable arsenal of vulnerability checks to ensure the fortification of your digital citadel. Here's a glimpse of what it can detect:
 
 - **SQL Injection (SQLi)**: Unearths vulnerabilities that could allow malicious SQL queries.
 - **Remote Code Execution (RCE)**: Guards against unauthorized execution of code on your server.
@@ -143,7 +143,7 @@ EgyScan V3.3 is equipped with a formidable arsenal of vulnerability checks to en
 - **Deserialization Vulnerabilities**: Detects and mitigates deserialization vulnerabilities.
 - **Server-Side Request Forgery (SSRF)**: Protects against SSRF attacks.
 
-With EgyScan V3.0, you're armed with a robust toolset to fortify your digital defenses comprehensively.
+With EgyScan V3.4, you're armed with a robust toolset to fortify your digital defenses comprehensively.
 
 Remember, your digital fortress is only as strong as its weakest link. EgyScan's thorough vulnerability checks leave no stone unturned to secure your online kingdom.
 
@@ -155,7 +155,7 @@ EgyScan V3.3 transcends technology; it's your indomitable ally, the guardian of 
 Summon your courage, unsheathe your digital sword, and venture into the realm of invincibility!
 
 Champion of Code,
-[AliElTop]
+[Ali Essam]
 ![image](https://github.com/dragonked2/Egyscan/assets/66541902/2d099b6a-9c14-49a2-ba51-0dfe52a7cad3)
 
 
