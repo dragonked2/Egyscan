@@ -1,6 +1,6 @@
 beautifulsoup4==4.9.3
 colorama==0.4.4
-requests==2.31.0
+requests==2.32.0
 tqdm==4.66.3
 ratelimit
 aiohttp
