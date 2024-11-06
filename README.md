@@ -37,7 +37,7 @@ Unleashing EgyScan's might is as simple as commanding a digital army:
 
 2. **Invoke the Elements:** With a digital flourish, conjure the dependencies:
    ```shell
-   pip install requirements.txt                                                                                                                                                   
+   pip install -r requirements.txt                                                                                                                                                   
    ```
 
 3. **Awaken the Guardian:** Initiate the ritual with:
