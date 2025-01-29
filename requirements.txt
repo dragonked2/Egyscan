@@ -5,3 +5,4 @@ tqdm==4.66.3
 ratelimit
 aiohttp
 defusedxml
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
