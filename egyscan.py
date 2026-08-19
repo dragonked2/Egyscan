@@ -1461,7 +1461,7 @@ def check_command_injection(url):
         response = requests.get(url)
         response.raise_for_status()
         if re.search(
-            r"(\bexec\b|\bpopen\b|\bshell_exec\b)", response.text, re.IGNORECASE
+            r"(\bexec(?:ute)?\b|\bpopen\b|\bshell_exec\b)", response.text, re.IGNORECASE
         ):
             if re.search(r"Command Injection", response.text, re.IGNORECASE):
                 command = "echo vulnerable"
@@ -2190,6 +2190,8 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
 
             for param, param_values in form_data.items():
                 for param_value in param_values:
+                    if param_value is None:
+                        param_value = ""
                     for payload in payloads:
                         injected_form_data = form_data.copy()
                         injected_form_data[param] = param_value + payload
@@ -2253,6 +2255,9 @@ def scan_for_vulnerabilities(url, payloads, headers=None, tokens=None, threads=1
         scan_response(response)
 
     inject_payloads_into_params(url)
+
+    if response is None:
+        return vulnerable_urls
 
     soup = BeautifulSoup(response.text, "html.parser")
     forms = soup.find_all("form")
