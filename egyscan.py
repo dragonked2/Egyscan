@@ -1,3 +1,4 @@
+import io
 import logging
 import tqdm
 import warnings
@@ -1169,8 +1170,10 @@ def is_valid_backup(content_type, content):
 
 def is_binary_file(file):
     try:
+        if isinstance(file, (bytes, bytearray)):
+            return True
         return isinstance(file.read(0), bytes)
-    except io.UnsupportedOperation:
+    except (AttributeError, io.UnsupportedOperation):
         return True
 
 
